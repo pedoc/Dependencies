@@ -124,6 +124,48 @@ namespace Dependencies
             return new Tuple<ModuleSearchStrategy, PE>(ModuleLocation, ResolvedModule);
         }
 
+        public static Tuple<ModuleSearchStrategy, PE> ResolveModule(PE RootPe, string ModulePath, string WorkingDirectory)
+        {
+            Tuple<ModuleSearchStrategy, string> ResolvedFilepath;
+
+            string absPath;
+            if (string.IsNullOrWhiteSpace(ModulePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(ModulePath));
+
+            if (Path.IsPathRooted(ModulePath))
+            {
+                // If already an absolute path, get the normalized full path
+                absPath = Path.GetFullPath(ModulePath);
+            }
+            else
+            {
+                // If relative, combine with the working directory
+                if (string.IsNullOrWhiteSpace(WorkingDirectory))
+                    throw new ArgumentException("Base folder must be provided for relative paths.", nameof(WorkingDirectory));
+
+                // Combine base folder and relative file path, then get full path
+                absPath = Path.Combine(WorkingDirectory, ModulePath);
+                absPath = Path.GetFullPath(absPath);
+            }
+
+            if (File.Exists(absPath)) 
+            {
+                // if the file exists, we can use it directly
+                ResolvedFilepath = new Tuple<ModuleSearchStrategy, string>(ModuleSearchStrategy.Fullpath, absPath);
+            }
+            else
+            {
+                // Can not find the path.
+                ResolvedFilepath = new Tuple<ModuleSearchStrategy, string>(ModuleSearchStrategy.NOT_FOUND, null);
+            }
+
+            PE ResolvedModule = null;
+            if (ResolvedFilepath.Item2 != null)
+                ResolvedModule = LoadPe(ResolvedFilepath.Item2);
+
+
+            return new Tuple<ModuleSearchStrategy, PE>(ResolvedFilepath.Item1, ResolvedModule);
+        }
 
         private static ApiSetSchema ApiSetmapCache = Phlib.GetApiSetSchema();
 

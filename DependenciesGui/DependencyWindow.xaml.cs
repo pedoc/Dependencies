@@ -840,8 +840,6 @@ namespace Dependencies
                         Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
                             this.Pe,
                             AssemblyModule.FileName,
-                            this.SxsEntriesCache,
-                            this.CustomSearchFolders,
                             this.WorkingDirectory
                         );
                         if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
