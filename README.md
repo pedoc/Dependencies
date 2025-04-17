@@ -17,6 +17,12 @@ NB : due to [limitations on /clr compilation](https://msdn.microsoft.com/en-us/l
 
 ## Releases
 
+
+
+- v2.1.1
+  - Improved resolving dependancies for CLR dlls that use mono cecil
+  - Fixed issues with CI system that came up after upgrading to VS2022. Thank you [xiaoweiChen](https://github.com/xiaoweiChen) for the code change [code change](https://github.com/bb107/MemoryModulePP/pull/54/commits/7f37dc56f7b9f799ac11b733153c4ef1d14e71df) which I used as a reference.
+
 - [v2.1.0](https://github.com/himeshsameera/Dependencies/releases/download/v2.1.0/Dependencies_v2.1.0_x64.zip) :
   - Mearged several pull requests. Following are the fixes,
     - Pull request 266 - Now the root module data is displayed
