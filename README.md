@@ -29,6 +29,7 @@ NB : due to [limitations on /clr compilation](https://msdn.microsoft.com/en-us/l
     - Pull request 269 - No duplicate items in recent menu.
     - Pull request 265 - Binary Cache perfomace is improved.
     - Pull request 246 - Potential memory leak is fixed.
+    - Pull request 260 - Copy file path and open in explorer options are added.
   - Updated code to use VS2022, Platform toolset V143 Windows SDK 10
   - Thank You all the contributors of the pull requests [viruscamp](https://github.com/viruscamp), [wekoil](https://github.com/wekoil) and [DawmosTomie](https://github.com/DawmosTomie). I'll review and merge the other pull requests as the time permits.
 * [v2.0-alpha](https://github.com/himeshsameera/Dependencies/releases/download/V2.0-alpha/Dependencies_V2.0-alpha_x64.zip) :
