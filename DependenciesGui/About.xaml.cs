@@ -35,7 +35,7 @@ namespace Dependencies
 
         private async void Uri_CheckUpdates(object sender, RequestNavigateEventArgs e)
         {
-            string version = await GetLatestVersion("https://github.com/lucasg/Dependencies/releases/latest");
+            string version = await GetLatestVersion("https://github.com/himeshsameera/Dependencies/releases/latest");
             UpdateCheck.Inlines.Clear();
             UpdateCheck.Inlines.Add("Latest version: ");
             var link = new Hyperlink()

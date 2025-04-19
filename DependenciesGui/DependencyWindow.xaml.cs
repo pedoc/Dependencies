@@ -586,6 +586,7 @@ namespace Dependencies
             var RootFilename = Path.GetFileName(this.Filename);
             var RootModule = new DisplayModuleInfo(RootFilename, this.Pe, ModuleSearchStrategy.ROOT);
             this.ProcessedModulesCache.Add(new ModuleCacheKey(RootFilename, this.Filename), RootModule);
+            this.ModulesList.AddModule(RootModule);
 
             ModuleTreeViewItem treeNode = new ModuleTreeViewItem();
             DependencyNodeContext childTreeInfoContext = new DependencyNodeContext()
@@ -765,16 +766,10 @@ namespace Dependencies
             }
         }
 
-        private void ProcessClrImports(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe, ImportContext ImportModule)
+        private void ProcessClrImports(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe)
         {
-            List<PeImportDll> PeImports = AnalyzedPe.GetImports();
 
-            // only mscorre triggers clr parsing
-            string User32Filepath = Path.Combine(FindPe.GetSystemPath(this.Pe), "mscoree.dll");
-            if (ImportModule.PeFilePath != User32Filepath)
-            {
-                return;
-            }
+            List<PeImportDll> PeImports = AnalyzedPe.GetImports();
 
             var resolver = new DefaultAssemblyResolver();
             resolver.AddSearchDirectory(RootFolder);
@@ -845,8 +840,6 @@ namespace Dependencies
                         Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
                             this.Pe,
                             AssemblyModule.FileName,
-                            this.SxsEntriesCache,
-                            this.CustomSearchFolders,
                             this.WorkingDirectory
                         );
                         if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
@@ -938,17 +931,19 @@ namespace Dependencies
 
                 // add warning for appv isv applications 
                 TriggerWarningOnAppvIsvImports(DllImport.Name);
-				
 
                 NewTreeContexts.Add(DllImport.Name, ImportModule);
-
 
                 // AppInitDlls are triggered by user32.dll, so if the binary does not import user32.dll they are not loaded.
                 ProcessAppInitDlls(NewTreeContexts, newPe, ImportModule);
 
+            }
 
-                // if mscoree.dll is imported, it means the module is a C# assembly, and we can use Mono.Cecil to enumerate its references
-                ProcessClrImports(NewTreeContexts, newPe, ImportModule);
+            // This should happen only if this is validated to be a C# assembly
+            if (newPe.IsClrDll())
+            {
+                // We use Mono.Cecil to enumerate its references
+                ProcessClrImports(NewTreeContexts, newPe);
             }
         }
 
@@ -980,6 +975,7 @@ namespace Dependencies
             BackgroundWorker bw = new BackgroundWorker();
             bw.WorkerReportsProgress = true; // useless here for now
 
+            (Application.Current as App).StatusBarMessage = "Analyzing PE File " + CurrentPE.Filepath;
 
             bw.DoWork += (sender, e) => {
 
@@ -1073,7 +1069,10 @@ namespace Dependencies
                     // it's asynchronous (we would have to wait for all the background to finish and
                     // use another Async worker to resolve).
 
-                    if ((NewTreeContext.PeProperties != null) && (NewTreeContext.PeProperties.GetImports().Count > 0))
+                    // Some dot net dlls give 0 for GetImports() but they will always have imports
+                    // that can be detected using the special CLR dll processing we do. 
+                    if ((NewTreeContext.PeProperties != null)  && 
+                    (NewTreeContext.PeProperties.GetImports().Count > 0 || NewTreeContext.PeProperties.IsClrDll()))
                     {
                         ModuleTreeViewItem DummyEntry = new ModuleTreeViewItem();
                         DependencyNodeContext DummyContext = new DependencyNodeContext()
@@ -1112,7 +1111,8 @@ namespace Dependencies
                     }
                 }
 
-
+                
+                (Application.Current as App).StatusBarMessage = CurrentPE.Filepath + " Loaded successfully.";
             };
 
             bw.RunWorkerAsync();
@@ -1344,6 +1344,28 @@ namespace Dependencies
                     return;
                 }
             }
+        }
+
+        private void CopyFilePath_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
+            String SelectedModuleName = Source.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+            if (Source == null)
+                return;
+
+            Clipboard.SetText(SelectedModuleName);
+        }
+
+        private void OpenInExplorer_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
+            if (Source == null)
+                return;
+
+            String SelectedModuleName = Source.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+            String commandParameter = "/select,\"" + SelectedModuleName + "\"";
+
+            Process.Start("explorer.exe", commandParameter);
         }
 
         private void ExpandAllParentNode(ModuleTreeViewItem Item)

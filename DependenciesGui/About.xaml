@@ -24,13 +24,13 @@
                        Name="TextContent">
                 Dependencies v<Run Text="{Binding VersionStr,Mode=OneWay}" /> :<LineBreak />
                 <LineBreak />
-                Dependency tool made by lucasg.
+                Dependency tool made by lucasg. Maintained by himeshsameera.
                 <LineBreak />
                 Please go to 
                 <Hyperlink
-                    NavigateUri="https://github.com/lucasg/Dependencies/issues"
+                    NavigateUri="https://github.com/himeshsameera/Dependencies/issues"
                     RequestNavigate="Uri_RequestNavigate">
-                    https://github.com/lucasg/Dependencies/issues
+                    https://github.com/himeshsameera/Dependencies/issues
                 </Hyperlink> to report issues.
                 <LineBreak />
                 <LineBreak />
