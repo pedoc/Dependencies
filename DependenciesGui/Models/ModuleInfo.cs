@@ -4,7 +4,6 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
 using System.ComponentModel;
-
 using Dependencies.ClrPh;
 
 [Flags]
@@ -23,15 +22,14 @@ public enum ModuleFlag
     DelayLoad = 0x01,
     ClrReference = 0x02,
     ApiSet = 0x04,
-	ApiSetExt = 0x08,
-	NotFound = 0x10,
+    ApiSetExt = 0x08,
+    NotFound = 0x10,
     MissingImports = 0x20,
     ChildrenError = 0x40,
 }
 
 namespace Dependencies
 {
-
     public struct ModuleInfo
     {
         // @TODO(Hack: refactor correctly for image generation)
@@ -57,57 +55,113 @@ namespace Dependencies
         public UInt64 Filesize;
     }
 
-	public class ApiSetNotFoundModuleInfo : NotFoundModuleInfo
-	{
-		public ApiSetNotFoundModuleInfo(string ApiSetModuleName, string NotFoundHostModule)
-		:base(ApiSetModuleName)
-		{
-			_HostName = NotFoundHostModule;
-
-			_Flags |= ModuleFlag.ApiSet;
-			_Flags |= ModuleFlag.NotFound;
-			if (ApiSetModuleName.StartsWith("ext-"))
-			{
-				_Flags |= ModuleFlag.ApiSetExt;
-			}
-		}
-
-		public override string ModuleName { get { return String.Format("{0:s} -> {1:s}", this._Name, _HostName); } }
-
-		private string _HostName;
-	}
-
-	public class NotFoundModuleInfo : DisplayModuleInfo
+    public class ApiSetNotFoundModuleInfo : NotFoundModuleInfo
     {
-        public NotFoundModuleInfo(string NotFoundModuleName)
-        : base(NotFoundModuleName)
+        public ApiSetNotFoundModuleInfo(string ApiSetModuleName, string NotFoundHostModule)
+            : base(ApiSetModuleName)
         {
-			_Flags |= ModuleFlag.NotFound;
+            _HostName = NotFoundHostModule;
+
+            _Flags |= ModuleFlag.ApiSet;
+            _Flags |= ModuleFlag.NotFound;
+            if (ApiSetModuleName.StartsWith("ext-"))
+            {
+                _Flags |= ModuleFlag.ApiSetExt;
+            }
         }
 
-        public override string Filepath { get { return _Name; } }
-        public override List<PeImportDll> Imports { get { return new List<PeImportDll>(); } }
-        public override List<PeExport> Exports { get { return new List<PeExport>(); } }
+        public override string ModuleName
+        {
+            get { return String.Format("{0:s} -> {1:s}", this._Name, _HostName); }
+        }
 
-        public override string Cpu { get { return null; } }
-        public override string Type { get { return null; } }
-        public override UInt64? Filesize { get { return null; } }
-        public override UInt64? ImageBase { get { return null; } }
-        public override int? VirtualSize { get { return null; } }
-        public override UInt64? EntryPoint { get { return null; } }
-        public override int? Subsystem { get { return null; } }
-        public override string SubsystemVersion { get { return null; } }
-        public override int? Checksum { get { return null; } }
-        public override bool? CorrectChecksum { get { return null; } }
-        public override ModuleSearchStrategy Location { get { return ModuleSearchStrategy.NOT_FOUND; } }
+        private string _HostName;
+    }
 
+    public class NotFoundModuleInfo : DisplayModuleInfo
+    {
+        public NotFoundModuleInfo(string NotFoundModuleName)
+            : base(NotFoundModuleName)
+        {
+            _Flags |= ModuleFlag.NotFound;
+        }
+
+        public override string Filepath
+        {
+            get { return _Name; }
+        }
+
+        public override List<PeImportDll> Imports
+        {
+            get { return new List<PeImportDll>(); }
+        }
+
+        public override List<PeExport> Exports
+        {
+            get { return new List<PeExport>(); }
+        }
+
+        public override string Cpu
+        {
+            get { return null; }
+        }
+
+        public override string Type
+        {
+            get { return null; }
+        }
+
+        public override UInt64? Filesize
+        {
+            get { return null; }
+        }
+
+        public override UInt64? ImageBase
+        {
+            get { return null; }
+        }
+
+        public override int? VirtualSize
+        {
+            get { return null; }
+        }
+
+        public override UInt64? EntryPoint
+        {
+            get { return null; }
+        }
+
+        public override int? Subsystem
+        {
+            get { return null; }
+        }
+
+        public override string SubsystemVersion
+        {
+            get { return null; }
+        }
+
+        public override int? Checksum
+        {
+            get { return null; }
+        }
+
+        public override bool? CorrectChecksum
+        {
+            get { return null; }
+        }
+
+        public override ModuleSearchStrategy Location
+        {
+            get { return ModuleSearchStrategy.NOT_FOUND; }
+        }
     }
 
 
     public class ApiSetModuleInfo : DisplayModuleInfo
     {
         public ApiSetModuleInfo(string ApiSetModuleName, ref DisplayModuleInfo _UnderlyingModule)
-        : base(ApiSetModuleName)
+            : base(ApiSetModuleName)
         {
             UnderlyingModule = _UnderlyingModule;
 
@@ -119,24 +173,81 @@ namespace Dependencies
             }
         }
 
-        public override string ModuleName { get { return String.Format("{0:s} -> {1:s}", this._Name, UnderlyingModule.ModuleName);}}
-        public override string Filepath { get { return UnderlyingModule.Filepath; } }
+        public override string ModuleName
+        {
+            get { return String.Format("{0:s} -> {1:s}", this._Name, UnderlyingModule.ModuleName); }
+        }
 
-        public override List<PeImportDll> Imports { get { return UnderlyingModule.Imports; } }
-        public override List<PeExport> Exports { get { return UnderlyingModule.Exports; } }
+        public override string Filepath
+        {
+            get { return UnderlyingModule.Filepath; }
+        }
+
+        public override List<PeImportDll> Imports
+        {
+            get { return UnderlyingModule.Imports; }
+        }
+
+        public override List<PeExport> Exports
+        {
+            get { return UnderlyingModule.Exports; }
+        }
 
 
-        public override string Cpu { get { return UnderlyingModule.Cpu; } }
-        public override string Type { get { return UnderlyingModule.Type; } }
-        public override UInt64? Filesize { get { return UnderlyingModule.Filesize; } }
-        public override UInt64? ImageBase { get { return UnderlyingModule.ImageBase; } }
-        public override int? VirtualSize { get { return UnderlyingModule.VirtualSize; } }
-        public override UInt64? EntryPoint { get { return UnderlyingModule.EntryPoint; } }
-        public override int? Subsystem { get { return UnderlyingModule.Subsystem; } }
-        public override string SubsystemVersion { get { return UnderlyingModule.SubsystemVersion; } }
-        public override int? Checksum { get { return UnderlyingModule.Checksum; } }
-        public override bool? CorrectChecksum { get { return UnderlyingModule.CorrectChecksum; } }
-        public override ModuleSearchStrategy Location { get { return ModuleSearchStrategy.ApiSetSchema; } }
+        public override string Cpu
+        {
+            get { return UnderlyingModule.Cpu; }
+        }
+
+        public override string Type
+        {
+            get { return UnderlyingModule.Type; }
+        }
+
+        public override UInt64? Filesize
+        {
+            get { return UnderlyingModule.Filesize; }
+        }
+
+        public override UInt64? ImageBase
+        {
+            get { return UnderlyingModule.ImageBase; }
+        }
+
+        public override int? VirtualSize
+        {
+            get { return UnderlyingModule.VirtualSize; }
+        }
+
+        public override UInt64? EntryPoint
+        {
+            get { return UnderlyingModule.EntryPoint; }
+        }
+
+        public override int? Subsystem
+        {
+            get { return UnderlyingModule.Subsystem; }
+        }
+
+        public override string SubsystemVersion
+        {
+            get { return UnderlyingModule.SubsystemVersion; }
+        }
+
+        public override int? Checksum
+        {
+            get { return UnderlyingModule.Checksum; }
+        }
+
+        public override bool? CorrectChecksum
+        {
+            get { return UnderlyingModule.CorrectChecksum; }
+        }
+
+        public override ModuleSearchStrategy Location
+        {
+            get { return ModuleSearchStrategy.ApiSetSchema; }
+        }
 
         /// <summary>
         /// The pointed module which actually does implement the api set contract
@@ -147,11 +258,11 @@ namespace Dependencies
 
     public class DisplayModuleInfo : SettingBindingHandler, INotifyPropertyChanged
     {
-        #region Constructors 
+        #region Constructors
+
         public DisplayModuleInfo(string ModuleName)
         {
-
-			_Name = ModuleName;
+            _Name = ModuleName;
             _Filepath = null;
             _Flags = 0;
 
@@ -160,13 +271,11 @@ namespace Dependencies
 
         public DisplayModuleInfo(string ModuleName, PE Pe, ModuleSearchStrategy Location, ModuleFlag Flags = 0)
         {
-
-
-			_Name = ModuleName;
+            _Name = ModuleName;
             _Filepath = Pe.Filepath;
             _Flags = Flags;
-            
-            
+
+
             // Do not set this variables in order to 
             // lessen memory allocations
             _Imports = null;
@@ -175,7 +284,6 @@ namespace Dependencies
 
             _Info = new ModuleInfo()
             {
-
                 Machine = Pe.Properties.Machine,
                 Magic = Pe.Properties.Magic,
                 Filesize = Pe.Properties.FileSize,
@@ -196,23 +304,25 @@ namespace Dependencies
 
             AddNewEventHandler("FullPath", "FullPath", "ModuleName", this.GetPathDisplayName);
         }
+
         #endregion // Constructors 
 
 
-
         #region PublicAPI
+
         public virtual string ModuleName
         {
             get { return GetPathDisplayName(Dependencies.Properties.Settings.Default.FullPath); }
         }
 
-        public virtual string Filepath {
+        public virtual string Filepath
+        {
             get { return _Filepath; }
         }
 
         public virtual bool DelayLoad
         {
-            get { return (_Flags & ModuleFlag.DelayLoad) != 0;  }
+            get { return (_Flags & ModuleFlag.DelayLoad) != 0; }
         }
 
         public virtual ModuleFlag Flags
@@ -223,21 +333,23 @@ namespace Dependencies
 
         public virtual List<PeImportDll> Imports
         {
-            get { 
-            
-                if (_Imports == null) {
+            get
+            {
+                if (_Imports == null)
+                {
                     _Imports = (System.Windows.Application.Current as App).LoadBinary(Filepath).GetImports();
                 }
-            
-                return _Imports;  
+
+                return _Imports;
             }
         }
 
         public virtual List<PeExport> Exports
         {
-            get { 
-            
-                if (_Exports == null) {
+            get
+            {
+                if (_Exports == null)
+                {
                     _Exports = (System.Windows.Application.Current as App).LoadBinary(Filepath).GetExports();
                 }
 
@@ -254,7 +366,7 @@ namespace Dependencies
             return _Name;
         }
 
-    
+
         public virtual string Cpu
         {
             get
@@ -268,13 +380,13 @@ namespace Dependencies
                     case 0x8664: /*IMAGE_FILE_MACHINE_AMD64*/
                         return "AMD64";
 
-                    case 0x0200:/*IMAGE_FILE_MACHINE_IA64*/
+                    case 0x0200: /*IMAGE_FILE_MACHINE_IA64*/
                         return "IA64";
 
-                    case 0x01c4:/*IMAGE_FILE_MACHINE_ARMNT*/
+                    case 0x01c4: /*IMAGE_FILE_MACHINE_ARMNT*/
                         return "ARM Thumb-2";
 
-                    case 0xAA64:/*IMAGE_FILE_MACHINE_ARM64*/
+                    case 0xAA64: /*IMAGE_FILE_MACHINE_ARM64*/
                         return "ARM64";
 
                     default:
@@ -290,42 +402,72 @@ namespace Dependencies
                 List<String> TypeList = new List<String>();
                 PeTypes Type = (PeTypes)_Info.Characteristics;
 
-                if ((Type & PeTypes.IMAGE_FILE_DLL) != PeTypes.None)/* IMAGE_FILE_DLL */
+                if ((Type & PeTypes.IMAGE_FILE_DLL) != PeTypes.None) /* IMAGE_FILE_DLL */
                     TypeList.Add("Dll");
 
                 if ((Type & PeTypes.IMAGE_FILE_EXECUTABLE_IMAGE) != PeTypes.None) /* IMAGE_FILE_EXECUTABLE_IMAGE */
                     TypeList.Add("Executable");
 
 
-
                 return String.Join("; ", TypeList.ToArray());
             }
         }
 
-		public bool HasErrors
-		{
-			get
-			{
-				return _ErrorImport;
-			}
-			set
-			{
-				_ErrorImport = value;
+        public bool HasErrors
+        {
+            get { return _ErrorImport; }
+            set
+            {
+                _ErrorImport = value;
                 OnPropertyChanged("HasErrors");
-
             }
-		}
+        }
 
 
-        public virtual UInt64? Filesize { get { return _Info.Filesize; } }
-        public virtual UInt64? ImageBase { get { return _Info.ImageBase; } }
-        public virtual int? VirtualSize { get { return _Info.SizeOfImage; } }
-        public virtual UInt64? EntryPoint { get { return _Info.EntryPoint; } }
-        public virtual int? Subsystem { get { return _Info.Subsystem; } }
-        public virtual string SubsystemVersion { get { return String.Format("{0:d}.{1:d}" , _Info.SubsystemVersion.Item1, _Info.SubsystemVersion.Item2); } }
-        public virtual int? Checksum { get { return _Info.Checksum; } }
-        public virtual bool? CorrectChecksum { get { return _Info.CorrectChecksum; } }
-        public virtual ModuleSearchStrategy Location { get { return _Location; } }
+        public virtual UInt64? Filesize
+        {
+            get { return _Info.Filesize; }
+        }
+
+        public virtual UInt64? ImageBase
+        {
+            get { return _Info.ImageBase; }
+        }
+
+        public virtual int? VirtualSize
+        {
+            get { return _Info.SizeOfImage; }
+        }
+
+        public virtual UInt64? EntryPoint
+        {
+            get { return _Info.EntryPoint; }
+        }
+
+        public virtual int? Subsystem
+        {
+            get { return _Info.Subsystem; }
+        }
+
+        public virtual string SubsystemVersion
+        {
+            get { return String.Format("{0:d}.{1:d}", _Info.SubsystemVersion.Item1, _Info.SubsystemVersion.Item2); }
+        }
+
+        public virtual int? Checksum
+        {
+            get { return _Info.Checksum; }
+        }
+
+        public virtual bool? CorrectChecksum
+        {
+            get { return _Info.CorrectChecksum; }
+        }
+
+        public virtual ModuleSearchStrategy Location
+        {
+            get { return _Location; }
+        }
 
         public string Status
         {
@@ -351,16 +493,16 @@ namespace Dependencies
                     return String.Format("{0:s} module has an erroneous child module", this.Filepath);
                 }
 
-                return String.Format("{0:s} module loaded correctly", this.Filepath); ;
+                return String.Format("{0:s} module loaded correctly", this.Filepath);
+                ;
             }
         }
-
 
         #endregion PublicAPI
 
 
+        #region Commands
 
-        #region Commands 
         private RelayCommand _DoFindModuleInTreeCommand;
         private RelayCommand _ConfigureSearchOrderCommand;
 
@@ -394,7 +536,7 @@ namespace Dependencies
         {
             string programPath = Dependencies.Properties.Settings.Default.PeViewerPath;
             Process PeviewerProcess = new Process();
-        
+
             if ((Module == null))
             {
                 return false;
@@ -450,7 +592,6 @@ namespace Dependencies
                 {
                     _CopyValue = new RelayCommand((param) =>
                     {
-
                         if ((param == null))
                         {
                             return;
@@ -460,16 +601,18 @@ namespace Dependencies
 
                         try
                         {
-
                             Clipboard.SetText((string)param, TextDataFormat.Text);
                         }
-                        catch { }
+                        catch
+                        {
+                        }
                     });
                 }
 
                 return _CopyValue;
             }
         }
+
         #endregion // Commands 
 
 
@@ -478,6 +621,7 @@ namespace Dependencies
         /// This is the only "mandatory" data, the rest can be private.
         /// </summary>
         public string _Name;
+
         protected string _Filepath;
         protected ModuleFlag _Flags;
 
@@ -485,7 +629,7 @@ namespace Dependencies
         private ModuleSearchStrategy _Location;
         private List<PeImportDll> _Imports;
         private List<PeExport> _Exports;
-		private bool _ErrorImport;
+        private bool _ErrorImport;
 
 
         private RelayCommand _OpenPeviewerCommand;

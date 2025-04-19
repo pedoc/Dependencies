@@ -1,26 +1,31 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.ComponentModel;
 using System.Windows.Input;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Data;
+using System.Windows.Forms;
 using Microsoft.Win32;
-
 using Mono.Cecil;
 using Dependencies.ClrPh;
+using Application = System.Windows.Application;
+using Clipboard = System.Windows.Clipboard;
+using MessageBox = System.Windows.MessageBox;
+using TreeView = System.Windows.Controls.TreeView;
 
 namespace Dependencies
 {
-
     /// <summary>
     /// ImportContext : Describe an import module parsed from a PE.
     /// Only used during the dependency tree building phase
     /// </summary>
     public struct ImportContext
-{
+    {
         // Import "identifier" 
         public string ModuleName;
 
@@ -46,26 +51,26 @@ namespace Dependencies
     /// choice is left to the user to override the default behaviour.
     /// </summary>
     public class TreeBuildingBehaviour : IValueConverter
-    { 
+    {
         public enum DependencyTreeBehaviour
         {
             ChildOnly,
             RecursiveOnlyOnDirectImports,
             Recursive,
-
         }
 
         public static DependencyTreeBehaviour GetGlobalBehaviour()
         {
-            return (DependencyTreeBehaviour) (new TreeBuildingBehaviour()).Convert(
-                Dependencies.Properties.Settings.Default.TreeBuildBehaviour,
-                null,// targetType
-                null,// parameter
+            return (DependencyTreeBehaviour)(new TreeBuildingBehaviour()).Convert(
+                Properties.Settings.Default.TreeBuildBehaviour,
+                null, // targetType
+                null, // parameter
                 null // System.Globalization.CultureInfo
             );
         }
 
         #region TreeBuildingBehaviour.IValueConverter_contract
+
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             string StrBehaviour = (string)value;
@@ -82,9 +87,10 @@ namespace Dependencies
             }
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object ConvertBack(object value, Type targetType, object parameter,
+            System.Globalization.CultureInfo culture)
         {
-            DependencyTreeBehaviour Behaviour = (DependencyTreeBehaviour) value;
+            DependencyTreeBehaviour Behaviour = (DependencyTreeBehaviour)value;
 
             switch (Behaviour)
             {
@@ -97,6 +103,7 @@ namespace Dependencies
                     return "Recursive";
             }
         }
+
         #endregion TreeBuildingBehaviour.IValueConverter_contract
     }
 
@@ -120,14 +127,15 @@ namespace Dependencies
         public static BinaryCacheOptionValue GetGlobalBehaviour()
         {
             return (BinaryCacheOptionValue)(new BinaryCacheOption()).Convert(
-                Dependencies.Properties.Settings.Default.BinaryCacheOptionValue,
-                null,// targetType
-                null,// parameter
+                Properties.Settings.Default.BinaryCacheOptionValue,
+                null, // targetType
+                null, // parameter
                 null // System.Globalization.CultureInfo
             );
         }
 
         #region BinaryCacheOption.IValueConverter_contract
+
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             bool StrOption = (bool)value;
@@ -140,10 +148,10 @@ namespace Dependencies
                 case false:
                     return BinaryCacheOptionValue.No;
             }
-
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object ConvertBack(object value, Type targetType, object parameter,
+            System.Globalization.CultureInfo culture)
         {
             BinaryCacheOptionValue Behaviour = (BinaryCacheOptionValue)(int)value;
 
@@ -156,6 +164,7 @@ namespace Dependencies
                     return false;
             }
         }
+
         #endregion BinaryCacheOption.IValueConverter_contract
     }
 
@@ -171,12 +180,14 @@ namespace Dependencies
             return (destinationType.Equals(typeof(String)));
         }
 
-        public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value)
+        public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture,
+            object value)
         {
             return base.ConvertFrom(context, culture, value);
         }
 
-        public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType)
+        public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture,
+            object value, Type destinationType)
         {
             if (!destinationType.Equals(typeof(String)))
             {
@@ -227,29 +238,30 @@ namespace Dependencies
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-		public ModuleTreeViewItem()
-		{
-			_importsVerified = false;
-			_Parent = null;
-			Dependencies.Properties.Settings.Default.PropertyChanged += this.ModuleTreeViewItem_PropertyChanged;
-		}
-
-		public ModuleTreeViewItem(ModuleTreeViewItem Parent)
+        public ModuleTreeViewItem()
         {
-			_importsVerified = false;
-			_Parent = Parent;
-			Dependencies.Properties.Settings.Default.PropertyChanged += this.ModuleTreeViewItem_PropertyChanged;
+            _importsVerified = false;
+            _Parent = null;
+            Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
+        }
+
+        public ModuleTreeViewItem(ModuleTreeViewItem Parent)
+        {
+            _importsVerified = false;
+            _Parent = Parent;
+            Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
         }
 
         public ModuleTreeViewItem(ModuleTreeViewItem Other, ModuleTreeViewItem Parent)
         {
-			_importsVerified = false;
-			_Parent = Parent;
-			this.DataContext = new DependencyNodeContext( (DependencyNodeContext) Other.DataContext );
-			Dependencies.Properties.Settings.Default.PropertyChanged += this.ModuleTreeViewItem_PropertyChanged;
-		}
+            _importsVerified = false;
+            _Parent = Parent;
+            DataContext = new DependencyNodeContext((DependencyNodeContext)Other.DataContext);
+            Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
+        }
 
-        #region PropertyEventHandlers 
+        #region PropertyEventHandlers
+
         public virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -259,47 +271,39 @@ namespace Dependencies
         {
             if (e.PropertyName == "FullPath")
             {
-                this.Header = (object)GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+                Header = (object)GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
             }
         }
+
         #endregion PropertyEventHandlers
 
         #region Getters
 
         public string GetTreeNodeHeaderName(bool FullPath)
         {
-            return (((DependencyNodeContext)this.DataContext).ModuleInfo.Target as DisplayModuleInfo).ModuleName;
+            return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo).ModuleName;
         }
 
         public string ModuleFilePath
         {
-            get
-            {
-                return (((DependencyNodeContext)this.DataContext).ModuleInfo.Target as DisplayModuleInfo).Filepath;
-            }
+            get { return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo).Filepath; }
         }
 
         public ModuleTreeViewItem ParentModule
-		{
-			get
-			{
-				return _Parent;
-			}
-		}
-
-
-		public ModuleFlag Flags
         {
-            get
-            {
-                return ModuleInfo.Flags;
-            }
+            get { return _Parent; }
+        }
+
+
+        public ModuleFlag Flags
+        {
+            get { return ModuleInfo.Flags; }
         }
 
         private bool _has_error;
 
-		public bool HasErrors
-		{
+        public bool HasErrors
+        {
             get
             {
                 if (!_importsVerified)
@@ -308,7 +312,7 @@ namespace Dependencies
                     _importsVerified = true;
 
                     // Update tooltip only once some basic checks are done
-                    this.ToolTip = ModuleInfo.Status;
+                    ToolTip = ModuleInfo.Status;
                 }
 
                 // propagate error for parent
@@ -330,23 +334,17 @@ namespace Dependencies
                 _has_error = value;
                 OnPropertyChanged("HasErrors");
             }
-		}
+        }
 
 
         public string Tooltip
         {
-            get
-            {
-                return ModuleInfo.Status;
-            }
+            get { return ModuleInfo.Status; }
         }
 
         public bool HasChildErrors
         {
-            get
-            {
-                return _has_child_errors;
-            }
+            get { return _has_child_errors; }
             set
             {
                 if (value)
@@ -372,17 +370,13 @@ namespace Dependencies
         }
 
         public DisplayModuleInfo ModuleInfo
-		{
-			get
-			{
-				return (((DependencyNodeContext)this.DataContext).ModuleInfo.Target as DisplayModuleInfo);
-			}
-		}
+        {
+            get { return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo); }
+        }
 
 
-		private bool VerifyModuleImports()
-		{
-
+        private bool VerifyModuleImports()
+        {
             // current module has issues
             if ((Flags & (ModuleFlag.NotFound | ModuleFlag.MissingImports | ModuleFlag.ChildrenError)) != 0)
             {
@@ -392,51 +386,48 @@ namespace Dependencies
             // no parent : it's probably the root item
             ModuleTreeViewItem ParentModule = this.ParentModule;
             if (ParentModule == null)
-			{
-				return false;
-			}
+            {
+                return false;
+            }
 
             // Check we have any imports issues
             foreach (PeImportDll DllImport in ParentModule.ModuleInfo.Imports)
-			{
-				if (DllImport.Name != ModuleInfo._Name)
-					continue;
+            {
+                if (DllImport.Name != ModuleInfo._Name)
+                    continue;
 
 
-
-				List<Tuple<PeImport, bool>> resolvedImports = BinaryCache.LookupImports(DllImport, ModuleInfo.Filepath);
-				if (resolvedImports.Count == 0)
-				{
+                List<Tuple<PeImport, bool>> resolvedImports = BinaryCache.LookupImports(DllImport, ModuleInfo.Filepath);
+                if (resolvedImports.Count == 0)
+                {
                     return true;
                 }
 
-				foreach (var Import in resolvedImports)
-				{
-					if (!Import.Item2)
-					{
+                foreach (var Import in resolvedImports)
+                {
+                    if (!Import.Item2)
+                    {
                         return true;
                     }
-				}
-			}
-
+                }
+            }
 
 
             return false;
         }
 
-        
-
-		#endregion Getters
+        #endregion Getters
 
 
-		#region Commands 
-		public RelayCommand OpenPeviewerCommand
+        #region Commands
+
+        public RelayCommand OpenPeviewerCommand
         {
             get
             {
                 if (_OpenPeviewerCommand == null)
                 {
-                    _OpenPeviewerCommand = new RelayCommand((param) => this.OpenPeviewer((object)param));
+                    _OpenPeviewerCommand = new RelayCommand((param) => OpenPeviewer((object)param));
                 }
 
                 return _OpenPeviewerCommand;
@@ -445,7 +436,7 @@ namespace Dependencies
 
         public bool OpenPeviewer(object Context)
         {
-            string programPath = Dependencies.Properties.Settings.Default.PeViewerPath;
+            string programPath = Properties.Settings.Default.PeViewerPath;
             Process PeviewerProcess = new Process();
 
             if (Context == null)
@@ -455,7 +446,7 @@ namespace Dependencies
 
             if (!File.Exists(programPath))
             {
-                System.Windows.MessageBox.Show(String.Format("{0:s} file could not be found !", programPath));
+                MessageBox.Show(String.Format("{0:s} file could not be found !", programPath));
                 return false;
             }
 
@@ -466,7 +457,7 @@ namespace Dependencies
             }
 
             PeviewerProcess.StartInfo.FileName = String.Format("\"{0:s}\"", programPath);
-            PeviewerProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", Filepath); 
+            PeviewerProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", Filepath);
             return PeviewerProcess.Start();
         }
 
@@ -499,24 +490,21 @@ namespace Dependencies
 
         private RelayCommand _OpenPeviewerCommand;
         private RelayCommand _OpenNewAppCommand;
-		private ModuleTreeViewItem _Parent;
-		private bool _importsVerified;
+        private ModuleTreeViewItem _Parent;
+        private bool _importsVerified;
         private bool _has_child_errors;
-
-
     }
 
 
     /// <summary>
     /// Dependemcy tree analysis window for a given PE.
     /// </summary>
-    public partial class DependencyWindow :  TabItem 
-    { 
-
+    public partial class DependencyWindow : TabItem
+    {
         PE Pe;
-		public string RootFolder;
-		public string WorkingDirectory;
-		string Filename;
+        public string RootFolder;
+        public string WorkingDirectory;
+        string Filename;
         PhSymbolProvider SymPrv;
         SxsEntries SxsEntriesCache;
         ApiSetSchema ApiSetmapCache;
@@ -524,33 +512,34 @@ namespace Dependencies
         DisplayModuleInfo _SelectedModule;
         bool _DisplayWarning;
 
-		public List<string> CustomSearchFolders;
+        public List<string> CustomSearchFolders;
 
         #region PublicAPI
+
         public DependencyWindow(String Filename, List<string> CustomSearchFolders = null)
         {
             InitializeComponent();
 
-			if (CustomSearchFolders != null)
-			{
-				this.CustomSearchFolders = CustomSearchFolders;
-			}
-			else
-			{
-				this.CustomSearchFolders = new List<string>();
-			}
-			
-			this.Filename = Filename;
-			this.WorkingDirectory = Path.GetDirectoryName(this.Filename);
-			InitializeView();
+            if (CustomSearchFolders != null)
+            {
+                this.CustomSearchFolders = CustomSearchFolders;
+            }
+            else
+            {
+                this.CustomSearchFolders = new List<string>();
+            }
+
+            this.Filename = Filename;
+            WorkingDirectory = Path.GetDirectoryName(this.Filename);
+            InitializeView();
         }
 
         public void InitializeView()
         {
-            if (!NativeFile.Exists(this.Filename))
+            if (!NativeFile.Exists(Filename))
             {
                 MessageBox.Show(
-                    String.Format("{0:s} is not present on the disk", this.Filename),
+                    String.Format("{0:s} is not present on the disk", Filename),
                     "Invalid PE",
                     MessageBoxButton.OK
                 );
@@ -558,11 +547,11 @@ namespace Dependencies
                 return;
             }
 
-            this.Pe = (Application.Current as App).LoadBinary(this.Filename);
-			if (this.Pe == null || !this.Pe.LoadSuccessful)
-			{
+            Pe = (Application.Current as App).LoadBinary(Filename);
+            if (Pe == null || !Pe.LoadSuccessful)
+            {
                 MessageBox.Show(
-                    String.Format("{0:s} is not a valid PE-COFF file", this.Filename),
+                    String.Format("{0:s} is not a valid PE-COFF file", Filename),
                     "Invalid PE",
                     MessageBoxButton.OK
                 );
@@ -570,23 +559,23 @@ namespace Dependencies
                 return;
             }
 
-            this.SymPrv = new PhSymbolProvider();
-            this.RootFolder = Path.GetDirectoryName(this.Filename);
-            this.SxsEntriesCache = SxsManifest.GetSxsEntries(this.Pe);
-            this.ProcessedModulesCache = new ModulesCache();
-            this.ApiSetmapCache = Phlib.GetApiSetSchema();
-            this._SelectedModule = null;
-            this._DisplayWarning = false;
+            SymPrv = new PhSymbolProvider();
+            RootFolder = Path.GetDirectoryName(Filename);
+            SxsEntriesCache = SxsManifest.GetSxsEntries(Pe);
+            ProcessedModulesCache = new ModulesCache();
+            ApiSetmapCache = Phlib.GetApiSetSchema();
+            _SelectedModule = null;
+            _DisplayWarning = false;
 
             // TODO : Find a way to properly bind commands instead of using this hack
-            this.ModulesList.Items.Clear();
-            this.ModulesList.DoFindModuleInTreeCommand = DoFindModuleInTree;
-            this.ModulesList.ConfigureSearchOrderCommand = ConfigureSearchOrderCommand;
+            ModulesList.Items.Clear();
+            ModulesList.DoFindModuleInTreeCommand = DoFindModuleInTree;
+            ModulesList.ConfigureSearchOrderCommand = ConfigureSearchOrderCommand;
 
-            var RootFilename = Path.GetFileName(this.Filename);
-            var RootModule = new DisplayModuleInfo(RootFilename, this.Pe, ModuleSearchStrategy.ROOT);
-            this.ProcessedModulesCache.Add(new ModuleCacheKey(RootFilename, this.Filename), RootModule);
-            this.ModulesList.AddModule(RootModule);
+            var RootFilename = Path.GetFileName(Filename);
+            var RootModule = new DisplayModuleInfo(RootFilename, Pe, ModuleSearchStrategy.ROOT);
+            ProcessedModulesCache.Add(new ModuleCacheKey(RootFilename, Filename), RootModule);
+            ModulesList.AddModule(RootModule);
 
             ModuleTreeViewItem treeNode = new ModuleTreeViewItem();
             DependencyNodeContext childTreeInfoContext = new DependencyNodeContext()
@@ -596,18 +585,18 @@ namespace Dependencies
             };
 
             treeNode.DataContext = childTreeInfoContext;
-            treeNode.Header = treeNode.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+            treeNode.Header = treeNode.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
             treeNode.IsExpanded = true;
 
-            this.DllTreeView.Items.Clear();
-            this.DllTreeView.Items.Add(treeNode);
+            DllTreeView.Items.Clear();
+            DllTreeView.Items.Add(treeNode);
 
             // Recursively construct tree of dll imports
-            ConstructDependencyTree(treeNode, this.Pe);
+            ConstructDependencyTree(treeNode, Pe);
         }
+
         #endregion PublicAPI
 
-		
 
         #region TreeConstruction
 
@@ -626,12 +615,12 @@ namespace Dependencies
             }
 
             Tuple<ModuleSearchStrategy, PE> ResolvedModule = BinaryCache.ResolveModule(
-                    this.Pe,
-                    DllImport.Name,
-                    this.SxsEntriesCache,
-                    this.CustomSearchFolders,
-                    this.WorkingDirectory
-                );
+                Pe,
+                DllImport.Name,
+                SxsEntriesCache,
+                CustomSearchFolders,
+                WorkingDirectory
+            );
 
             ImportModule.ModuleLocation = ResolvedModule.Item1;
             if (ImportModule.ModuleLocation != ModuleSearchStrategy.NOT_FOUND)
@@ -648,7 +637,6 @@ namespace Dependencies
                             ImportModule.Flags |= ModuleFlag.MissingImports;
                             break;
                         }
-
                     }
                 }
             }
@@ -676,41 +664,40 @@ namespace Dependencies
         private void TriggerWarningOnAppvIsvImports(string DllImportName)
         {
             if (String.Compare(DllImportName, "AppvIsvSubsystems32.dll", StringComparison.OrdinalIgnoreCase) == 0 ||
-                    String.Compare(DllImportName, "AppvIsvSubsystems64.dll", StringComparison.OrdinalIgnoreCase) == 0)
+                String.Compare(DllImportName, "AppvIsvSubsystems64.dll", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                if (!_DisplayWarning)
                 {
-                    if (!this._DisplayWarning)
-                    {
-                        MessageBoxResult result = MessageBox.Show(
+                    MessageBoxResult result = MessageBox.Show(
                         "This binary use the App-V containerization technology which fiddle with search directories and PATH env in ways Dependencies can't handle.\n\nFollowing results are probably not quite exact.",
                         "App-V ISV disclaimer"
-                        );
+                    );
 
-                        this._DisplayWarning = true; // prevent the same warning window to popup several times
-                    }
-
+                    _DisplayWarning = true; // prevent the same warning window to popup several times
+                }
             }
         }
 
-        private void ProcessAppInitDlls(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe, ImportContext ImportModule)
+        private void ProcessAppInitDlls(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe,
+            ImportContext ImportModule)
         {
             List<PeImportDll> PeImports = AnalyzedPe.GetImports();
 
             // only user32 triggers appinit dlls
-            string User32Filepath = Path.Combine(FindPe.GetSystemPath(this.Pe), "user32.dll");
+            string User32Filepath = Path.Combine(FindPe.GetSystemPath(Pe), "user32.dll");
             if (ImportModule.PeFilePath != User32Filepath)
             {
                 return;
             }
 
             string AppInitRegistryKey =
-                (this.Pe.IsArm32Dll()) ?
-                "SOFTWARE\\WowAA32Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
-                (this.Pe.IsWow64Dll()) ?
-                "SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
+                (Pe.IsArm32Dll()) ? "SOFTWARE\\WowAA32Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
+                (Pe.IsWow64Dll()) ? "SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
                 "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows";
 
             // Opening registry values
-            RegistryKey localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry64);
+            RegistryKey localKey =
+                RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
             localKey = localKey.OpenSubKey(AppInitRegistryKey);
             int LoadAppInitDlls = (int)localKey.GetValue("LoadAppInit_DLLs", 0);
             string AppInitDlls = (string)localKey.GetValue("AppInit_DLLs", "");
@@ -718,7 +705,7 @@ namespace Dependencies
             {
                 return;
             }
-                
+
             // Extremely crude parser. TODO : Add support for quotes wrapped paths with spaces
             foreach (var AppInitDll in AppInitDlls.Split(' '))
             {
@@ -744,13 +731,12 @@ namespace Dependencies
                 AppInitImportModule.ModuleLocation = ModuleSearchStrategy.AppInitDLL;
 
 
-
                 Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                    this.Pe,
+                    Pe,
                     AppInitDll,
-                    this.SxsEntriesCache,
-                    this.CustomSearchFolders,
-                    this.WorkingDirectory
+                    SxsEntriesCache,
+                    CustomSearchFolders,
+                    WorkingDirectory
                 );
                 if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                 {
@@ -768,7 +754,6 @@ namespace Dependencies
 
         private void ProcessClrImports(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe)
         {
-
             List<PeImportDll> PeImports = AnalyzedPe.GetImports();
 
             var resolver = new DefaultAssemblyResolver();
@@ -783,9 +768,11 @@ namespace Dependencies
             catch (BadImageFormatException)
             {
                 MessageBoxResult result = MessageBox.Show(
-                        String.Format("Cecil could not correctly parse {0:s}, which can happens on .NET Core executables. CLR imports will be not shown", AnalyzedPe.Filepath),
-                        "CLR parsing fail"
-                ); 
+                    String.Format(
+                        "Cecil could not correctly parse {0:s}, which can happens on .NET Core executables. CLR imports will be not shown",
+                        AnalyzedPe.Filepath),
+                    "CLR parsing fail"
+                );
 
                 return;
             }
@@ -821,7 +808,8 @@ namespace Dependencies
 
                     foreach (var AssemblyModule in definition.Modules)
                     {
-                        Debug.WriteLine("Referenced Assembling loading " + AssemblyModule.Name + " : " + AssemblyModule.FileName);
+                        Debug.WriteLine("Referenced Assembling loading " + AssemblyModule.Name + " : " +
+                                        AssemblyModule.FileName);
 
                         // Do not process twice the same imported module
                         if (null != PeImports.Find(mod => mod.Name == Path.GetFileName(AssemblyModule.FileName)))
@@ -838,9 +826,9 @@ namespace Dependencies
                         AppInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
 
                         Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                            this.Pe,
+                            Pe,
                             AssemblyModule.FileName,
-                            this.WorkingDirectory
+                            WorkingDirectory
                         );
                         if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                         {
@@ -857,7 +845,6 @@ namespace Dependencies
                             NewTreeContexts.Add(AppInitImportModule.ModuleName, AppInitImportModule);
                         }
                     }
-
                 }
 
                 // Process unmanaged dlls for native calls
@@ -878,7 +865,6 @@ namespace Dependencies
                     }
 
 
-
                     ImportContext AppInitImportModule = new ImportContext();
                     AppInitImportModule.PeFilePath = null;
                     AppInitImportModule.PeProperties = null;
@@ -888,11 +874,11 @@ namespace Dependencies
                     AppInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
 
                     Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                        this.Pe,
+                        Pe,
                         UnmanagedModule.Name,
-                        this.SxsEntriesCache,
-                        this.CustomSearchFolders,
-                        this.WorkingDirectory
+                        SxsEntriesCache,
+                        CustomSearchFolders,
+                        WorkingDirectory
                     );
                     if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                     {
@@ -936,7 +922,6 @@ namespace Dependencies
 
                 // AppInitDlls are triggered by user32.dll, so if the binary does not import user32.dll they are not loaded.
                 ProcessAppInitDlls(NewTreeContexts, newPe, ImportModule);
-
             }
 
             // This should happen only if this is validated to be a C# assembly
@@ -950,7 +935,7 @@ namespace Dependencies
         private class BacklogImport : Tuple<ModuleTreeViewItem, string>
         {
             public BacklogImport(ModuleTreeViewItem Node, string Filepath)
-            : base(Node, Filepath)
+                : base(Node, Filepath)
             {
             }
         }
@@ -974,18 +959,15 @@ namespace Dependencies
 
             BackgroundWorker bw = new BackgroundWorker();
             bw.WorkerReportsProgress = true; // useless here for now
+            UpdateStatusBarMessage("Analyzing PE File " + CurrentPE.Filepath);
 
-            (Application.Current as App).StatusBarMessage = "Analyzing PE File " + CurrentPE.Filepath;
-
-            bw.DoWork += (sender, e) => {
-
-                ProcessPe(NewTreeContexts, CurrentPE);
-            };
+            bw.DoWork += (sender, e) => { ProcessPe(NewTreeContexts, CurrentPE); };
 
 
             bw.RunWorkerCompleted += (sender, e) =>
             {
-                TreeBuildingBehaviour.DependencyTreeBehaviour SettingTreeBehaviour = Dependencies.TreeBuildingBehaviour.GetGlobalBehaviour();
+                TreeBuildingBehaviour.DependencyTreeBehaviour SettingTreeBehaviour =
+                    TreeBuildingBehaviour.GetGlobalBehaviour();
                 List<ModuleTreeViewItem> PeWithDummyEntries = new List<ModuleTreeViewItem>();
                 List<BacklogImport> PEProcessingBacklog = new List<BacklogImport>();
 
@@ -1006,49 +988,53 @@ namespace Dependencies
                     ModuleCacheKey ModuleKey = new ModuleCacheKey(NewTreeContext);
 
                     // Newly seen modules
-                    if (!this.ProcessedModulesCache.ContainsKey(ModuleKey))
+                    if (!ProcessedModulesCache.ContainsKey(ModuleKey))
                     {
                         // Missing module "found"
-                        if ((NewTreeContext.PeFilePath == null) || !NativeFile.Exists(NewTreeContext.PeFilePath)) 
+                        if ((NewTreeContext.PeFilePath == null) || !NativeFile.Exists(NewTreeContext.PeFilePath))
                         {
-							if (NewTreeContext.IsApiSet)
-							{
-								this.ProcessedModulesCache[ModuleKey] = new ApiSetNotFoundModuleInfo(ModuleName, NewTreeContext.ApiSetModuleName);
-							}
-							else
-							{
-								this.ProcessedModulesCache[ModuleKey] = new NotFoundModuleInfo(ModuleName);
-							}
-								
+                            if (NewTreeContext.IsApiSet)
+                            {
+                                ProcessedModulesCache[ModuleKey] =
+                                    new ApiSetNotFoundModuleInfo(ModuleName, NewTreeContext.ApiSetModuleName);
+                            }
+                            else
+                            {
+                                ProcessedModulesCache[ModuleKey] = new NotFoundModuleInfo(ModuleName);
+                            }
                         }
                         else
                         {
-
-
                             if (NewTreeContext.IsApiSet)
                             {
-                                var ApiSetContractModule = new DisplayModuleInfo(NewTreeContext.ApiSetModuleName, NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
-                                var NewModule = new ApiSetModuleInfo(NewTreeContext.ModuleName, ref ApiSetContractModule);
+                                var ApiSetContractModule = new DisplayModuleInfo(NewTreeContext.ApiSetModuleName,
+                                    NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
+                                var NewModule =
+                                    new ApiSetModuleInfo(NewTreeContext.ModuleName, ref ApiSetContractModule);
 
-                                this.ProcessedModulesCache[ModuleKey] = NewModule;
+                                ProcessedModulesCache[ModuleKey] = NewModule;
 
                                 if (SettingTreeBehaviour == TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive)
                                 {
-                                    PEProcessingBacklog.Add(new BacklogImport(childTreeNode, ApiSetContractModule.ModuleName));
+                                    PEProcessingBacklog.Add(new BacklogImport(childTreeNode,
+                                        ApiSetContractModule.ModuleName));
                                 }
                             }
                             else
                             {
-                                var NewModule = new DisplayModuleInfo(NewTreeContext.ModuleName, NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
-                                this.ProcessedModulesCache[ModuleKey] = NewModule;
+                                var NewModule = new DisplayModuleInfo(NewTreeContext.ModuleName,
+                                    NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
+                                ProcessedModulesCache[ModuleKey] = NewModule;
 
-                                switch(SettingTreeBehaviour)
+                                switch (SettingTreeBehaviour)
                                 {
                                     case TreeBuildingBehaviour.DependencyTreeBehaviour.RecursiveOnlyOnDirectImports:
                                         if ((NewTreeContext.Flags & ModuleFlag.DelayLoad) == 0)
                                         {
-                                            PEProcessingBacklog.Add(new BacklogImport(childTreeNode, NewModule.ModuleName));
+                                            PEProcessingBacklog.Add(new BacklogImport(childTreeNode,
+                                                NewModule.ModuleName));
                                         }
+
                                         break;
 
                                     case TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive:
@@ -1059,9 +1045,9 @@ namespace Dependencies
                         }
 
                         // add it to the module list
-                        this.ModulesList.AddModule(this.ProcessedModulesCache[ModuleKey]);
+                        ModulesList.AddModule(ProcessedModulesCache[ModuleKey]);
                     }
-                    
+
                     // Since we uniquely process PE, for thoses who have already been "seen",
                     // we set a dummy entry in order to set the "[+]" icon next to the node.
                     // The dll dependencies are actually resolved on user double-click action
@@ -1071,8 +1057,8 @@ namespace Dependencies
 
                     // Some dot net dlls give 0 for GetImports() but they will always have imports
                     // that can be detected using the special CLR dll processing we do. 
-                    if ((NewTreeContext.PeProperties != null)  && 
-                    (NewTreeContext.PeProperties.GetImports().Count > 0 || NewTreeContext.PeProperties.IsClrDll()))
+                    if ((NewTreeContext.PeProperties != null) &&
+                        (NewTreeContext.PeProperties.GetImports().Count > 0 || NewTreeContext.PeProperties.IsClrDll()))
                     {
                         ModuleTreeViewItem DummyEntry = new ModuleTreeViewItem();
                         DependencyNodeContext DummyContext = new DependencyNodeContext()
@@ -1090,32 +1076,42 @@ namespace Dependencies
                     }
 
                     // Add to tree view
-                    childTreeNodeContext.ModuleInfo = new WeakReference(this.ProcessedModulesCache[ModuleKey]);
+                    childTreeNodeContext.ModuleInfo = new WeakReference(ProcessedModulesCache[ModuleKey]);
                     childTreeNode.DataContext = childTreeNodeContext;
-                    childTreeNode.Header = childTreeNode.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+                    childTreeNode.Header =
+                        childTreeNode.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
                     RootNode.Items.Add(childTreeNode);
                 }
 
 
-				// Process next batch of dll imports only if :
-				//	1. Recursive tree building has been activated
-				//  2. Recursion is not hitting the max depth level
-				bool doProcessNextLevel = (SettingTreeBehaviour != TreeBuildingBehaviour.DependencyTreeBehaviour.ChildOnly) &&
-										  (RecursionLevel < Dependencies.Properties.Settings.Default.TreeDepth);
+                // Process next batch of dll imports only if :
+                //	1. Recursive tree building has been activated
+                //  2. Recursion is not hitting the max depth level
+                bool doProcessNextLevel =
+                    (SettingTreeBehaviour != TreeBuildingBehaviour.DependencyTreeBehaviour.ChildOnly) &&
+                    (RecursionLevel < Properties.Settings.Default.TreeDepth);
 
-				if (doProcessNextLevel)
-                { 
+                if (doProcessNextLevel)
+                {
                     foreach (var ImportNode in PEProcessingBacklog)
                     {
-                        ConstructDependencyTree(ImportNode.Item1, ImportNode.Item2, RecursionLevel + 1); // warning : recursive call
+                        ConstructDependencyTree(ImportNode.Item1, ImportNode.Item2,
+                            RecursionLevel + 1); // warning : recursive call
                     }
                 }
 
-                
-                (Application.Current as App).StatusBarMessage = CurrentPE.Filepath + " Loaded successfully.";
+                UpdateStatusBarMessage(CurrentPE.Filepath + " Loaded successfully.");
             };
 
             bw.RunWorkerAsync();
+        }
+
+        private void UpdateStatusBarMessage(string msg)
+        {
+            if (Application.Current is App app)
+            {
+                app.StatusBarMessage = msg;
+            }
         }
 
         /// <summary>
@@ -1129,7 +1125,8 @@ namespace Dependencies
             {
                 return;
             }
-            ModuleTreeViewItem MaybeDummyNode = (ModuleTreeViewItem) NeedDummyPeNode.Items[0];
+
+            ModuleTreeViewItem MaybeDummyNode = (ModuleTreeViewItem)NeedDummyPeNode.Items[0];
             DependencyNodeContext Context = (DependencyNodeContext)MaybeDummyNode.DataContext;
 
             //TODO: Improve resolution predicate
@@ -1141,13 +1138,13 @@ namespace Dependencies
             NeedDummyPeNode.Items.Clear();
             string Filepath = NeedDummyPeNode.ModuleFilePath;
 
-            ConstructDependencyTree(NeedDummyPeNode, Filepath);     
+            ConstructDependencyTree(NeedDummyPeNode, Filepath);
         }
 
-#endregion TreeConstruction
+        #endregion TreeConstruction
 
-#region Commands
-     
+        #region Commands
+
         private void OnModuleViewSelectedItemChanged(object sender, RoutedEventArgs e)
         {
             DisplayModuleInfo SelectedModule = (sender as DependencyModuleList).SelectedItem as DisplayModuleInfo;
@@ -1155,20 +1152,21 @@ namespace Dependencies
             // Selected Pe has not been found on disk
             if (SelectedModule == null)
                 return;
-			
-			// Display module as root (since we can't know which parent it's attached to)
-			UpdateImportExportLists(SelectedModule, null);
+
+            // Display module as root (since we can't know which parent it's attached to)
+            UpdateImportExportLists(SelectedModule, null);
         }
 
         private void OnTreeViewSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if (this.DllTreeView.SelectedItem == null)
+            if (DllTreeView.SelectedItem == null)
             {
                 UpdateImportExportLists(null, null);
                 return;
             }
-			
-			DependencyNodeContext childTreeContext = ((DependencyNodeContext)(this.DllTreeView.SelectedItem as ModuleTreeViewItem).DataContext);
+
+            DependencyNodeContext childTreeContext =
+                ((DependencyNodeContext)(DllTreeView.SelectedItem as ModuleTreeViewItem).DataContext);
             DisplayModuleInfo SelectedModule = childTreeContext.ModuleInfo.Target as DisplayModuleInfo;
             if (SelectedModule == null)
             {
@@ -1180,14 +1178,16 @@ namespace Dependencies
             if (SelectedModule.HasErrors)
             {
                 // TODO : do a proper refresh instead of asking the user to do it
-                System.Windows.MessageBox.Show(String.Format("We could not find {0:s} file on the disk anymore, please fix this problem and refresh the window via F5", SelectedModule.Filepath));
+                MessageBox.Show(String.Format(
+                    "We could not find {0:s} file on the disk anymore, please fix this problem and refresh the window via F5",
+                    SelectedModule.Filepath));
             }
 
             // Root Item : no parent
-            ModuleTreeViewItem TreeRootItem = this.DllTreeView.Items[0] as ModuleTreeViewItem;
-			ModuleTreeViewItem SelectedItem = this.DllTreeView.SelectedItem as ModuleTreeViewItem;
-			if (SelectedItem == TreeRootItem)
-			{
+            ModuleTreeViewItem TreeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
+            ModuleTreeViewItem SelectedItem = DllTreeView.SelectedItem as ModuleTreeViewItem;
+            if (SelectedItem == TreeRootItem)
+            {
                 // Selected Pe has not been found on disk : unvalidate current module
                 if (SelectedModule.HasErrors)
                 {
@@ -1198,39 +1198,40 @@ namespace Dependencies
                     SelectedModule.HasErrors = false;
                     UpdateImportExportLists(SelectedModule, null);
                 }
-    
-				return;
-			}
 
-			// Tree Item
-			DisplayModuleInfo parentModule = SelectedItem.ParentModule.ModuleInfo;
+                return;
+            }
+
+            // Tree Item
+            DisplayModuleInfo parentModule = SelectedItem.ParentModule.ModuleInfo;
             UpdateImportExportLists(SelectedModule, parentModule);
-            
         }
 
         private void UpdateImportExportLists(DisplayModuleInfo SelectedModule, DisplayModuleInfo Parent)
         {
             if (SelectedModule == null)
             {
-                this.ImportList.Items.Clear();
-                this.ExportList.Items.Clear();
+                ImportList.Items.Clear();
+                ExportList.Items.Clear();
             }
             else
             {
-				if (Parent == null) // root module
-				{
-					this.ImportList.SetRootImports(SelectedModule.Imports, SymPrv, this);
-				}
-				else
-				{
-					// Imports from the same dll are not necessarly sequential (see: HDDGuru\RawCopy.exe)
-					var machingImports = Parent.Imports.FindAll(imp => imp.Name == SelectedModule._Name);
-					this.ImportList.SetImports(SelectedModule.Filepath, SelectedModule.Exports, machingImports, SymPrv, this);
-				}
-				this.ImportList.ResetAutoSortProperty();
+                if (Parent == null) // root module
+                {
+                    ImportList.SetRootImports(SelectedModule.Imports, SymPrv, this);
+                }
+                else
+                {
+                    // Imports from the same dll are not necessarly sequential (see: HDDGuru\RawCopy.exe)
+                    var machingImports = Parent.Imports.FindAll(imp => imp.Name == SelectedModule._Name);
+                    ImportList.SetImports(SelectedModule.Filepath, SelectedModule.Exports, machingImports, SymPrv,
+                        this);
+                }
 
-				this.ExportList.SetExports(SelectedModule.Exports, SymPrv);
-				this.ExportList.ResetAutoSortProperty();
+                ImportList.ResetAutoSortProperty();
+
+                ExportList.SetExports(SelectedModule.Exports, SymPrv);
+                ExportList.ResetAutoSortProperty();
             }
         }
 
@@ -1238,16 +1239,16 @@ namespace Dependencies
         {
             if (CurrentModule == null)
             {
-                CurrentModule = this._SelectedModule;
+                CurrentModule = _SelectedModule;
             }
 
             Tuple<ModuleSearchStrategy, PE> ResolvedModule = BinaryCache.ResolveModule(
-				this.Pe, 
-				ModuleName, 
-				this.SxsEntriesCache,
-				this.CustomSearchFolders,
-				this.WorkingDirectory
-			);
+                Pe,
+                ModuleName,
+                SxsEntriesCache,
+                CustomSearchFolders,
+                WorkingDirectory
+            );
 
             string ModuleFilepath = (ResolvedModule.Item2 != null) ? ResolvedModule.Item2.Filepath : null;
 
@@ -1264,7 +1265,7 @@ namespace Dependencies
                 ModuleFlags |= ModuleFlag.ApiSet;
 
             ModuleCacheKey ModuleKey = new ModuleCacheKey(ModuleName, ModuleFilepath, ModuleFlags);
-            if (!this.ProcessedModulesCache.ContainsKey(ModuleKey))
+            if (!ProcessedModulesCache.ContainsKey(ModuleKey))
             {
                 DisplayModuleInfo NewModule;
 
@@ -1287,13 +1288,12 @@ namespace Dependencies
                         ResolvedModule.Item1,
                         ModuleFlags
                     );
-                    
                 }
 
-                this.ProcessedModulesCache[ModuleKey] = NewModule;
+                ProcessedModulesCache[ModuleKey] = NewModule;
 
                 // add it to the module list
-                this.ModulesList.AddModule(this.ProcessedModulesCache[ModuleKey]);
+                ModulesList.AddModule(ProcessedModulesCache[ModuleKey]);
             }
 
             return ResolvedModule.Item2;
@@ -1308,7 +1308,7 @@ namespace Dependencies
         private void CollapseOrExpandAllNodes(ModuleTreeViewItem Item, bool ExpandNode)
         {
             Item.IsExpanded = ExpandNode;
-            foreach(ModuleTreeViewItem ChildItem in Item.Items)
+            foreach (ModuleTreeViewItem ChildItem in Item.Items)
             {
                 CollapseOrExpandAllNodes(ChildItem, ExpandNode);
             }
@@ -1319,28 +1319,30 @@ namespace Dependencies
             // Expanding all nodes tends to slow down the application (massive allocations for node DataContext)
             // TODO : Reduce memory pressure by storing tree nodes data context in a HashSet and find an async trick
             // to improve the command responsiveness.
-            System.Windows.Controls.TreeView TreeNode = sender as System.Windows.Controls.TreeView;
+            TreeView TreeNode = sender as TreeView;
+            if (TreeNode == null) return;
             CollapseOrExpandAllNodes((TreeNode.Items[0] as ModuleTreeViewItem), true);
         }
 
         private void CollapseAllNodes_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            System.Windows.Controls.TreeView TreeNode = sender as System.Windows.Controls.TreeView;
+            TreeView TreeNode = sender as TreeView;
+            if (TreeNode == null) return;
             CollapseOrExpandAllNodes((TreeNode.Items[0] as ModuleTreeViewItem), false);
         }
 
         private void DoFindModuleInList_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+            if (Source == null) return;
+            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
 
-            foreach (DisplayModuleInfo item in this.ModulesList.Items)
+            foreach (DisplayModuleInfo item in ModulesList.Items)
             {
                 if (item.ModuleName == SelectedModuleName)
                 {
-
-                    this.ModulesList.SelectedItem = item;
-                    this.ModulesList.ScrollIntoView(item);
+                    ModulesList.SelectedItem = item;
+                    ModulesList.ScrollIntoView(item);
                     return;
                 }
             }
@@ -1349,11 +1351,44 @@ namespace Dependencies
         private void CopyFilePath_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
             if (Source == null)
                 return;
-
+            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
             Clipboard.SetText(SelectedModuleName);
+        }
+
+        private void CopyAllFile_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ModuleTreeViewItem moduleTreeView = e.Source as ModuleTreeViewItem;
+            if (moduleTreeView == null)
+            {
+                TreeView treeNode = sender as TreeView;
+                if (treeNode == null || treeNode.Items.Count <= 0) return;
+                moduleTreeView = treeNode.Items[0] as ModuleTreeViewItem;
+            }
+
+            if (moduleTreeView == null || moduleTreeView.ModuleInfo == null ||
+                moduleTreeView.ModuleInfo.Imports == null) return;
+            var sc = new StringCollection();
+            foreach (ModuleTreeViewItem treeItem in moduleTreeView.Items.Cast<ModuleTreeViewItem>())
+            {
+                sc.Add(treeItem.ModuleFilePath);
+            }
+
+            UpdateStatusBarMessage($"Copyed {sc.Count} Files to Clipboard");
+            Clipboard.SetFileDropList(sc);
+        }
+
+        private void CopyFile_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
+            if (Source == null) return;
+            if (!File.Exists(Source.ModuleFilePath)) return;
+            Clipboard.SetFileDropList(new StringCollection()
+            {
+                Source.ModuleFilePath
+            });
+            UpdateStatusBarMessage($"{Source.ModuleFilePath} Copyed to Clipboard");
         }
 
         private void OpenInExplorer_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -1362,7 +1397,7 @@ namespace Dependencies
             if (Source == null)
                 return;
 
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath);
+            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
             String commandParameter = "/select,\"" + SelectedModuleName + "\"";
 
             Process.Start("explorer.exe", commandParameter);
@@ -1382,34 +1417,35 @@ namespace Dependencies
         /// </summary>
         /// <param name="Item"></param>
         /// <param name="ExpandNode"></param>
-        private ModuleTreeViewItem FindModuleInTree(ModuleTreeViewItem Item, DisplayModuleInfo Module, bool Highlight=false)
+        private ModuleTreeViewItem FindModuleInTree(ModuleTreeViewItem Item, DisplayModuleInfo Module,
+            bool Highlight = false)
         {
-            
-            if (Item.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath) == Module.ModuleName)
+            if (Item.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) == Module.ModuleName)
             {
-				if (Highlight)
-				{ 
-					ExpandAllParentNode(Item.Parent as ModuleTreeViewItem);
-					Item.IsSelected = true;
-					Item.BringIntoView();
-					Item.Focus();
-				}
+                if (Highlight)
+                {
+                    ExpandAllParentNode(Item.Parent as ModuleTreeViewItem);
+                    Item.IsSelected = true;
+                    Item.BringIntoView();
+                    Item.Focus();
+                }
 
-				return Item;
+                return Item;
             }
 
             // BFS style search -> return the first matching node with the lowest "depth"
             foreach (ModuleTreeViewItem ChildItem in Item.Items)
             {
-                if(ChildItem.GetTreeNodeHeaderName(Dependencies.Properties.Settings.Default.FullPath) == Module.ModuleName)
+                if (ChildItem.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) ==
+                    Module.ModuleName)
                 {
-					if (Highlight)
-					{
-						ExpandAllParentNode(Item);
-						ChildItem.IsSelected = true;
-						ChildItem.BringIntoView();
-						ChildItem.Focus();
-					}
+                    if (Highlight)
+                    {
+                        ExpandAllParentNode(Item);
+                        ChildItem.IsSelected = true;
+                        ChildItem.BringIntoView();
+                        ChildItem.Focus();
+                    }
 
                     return Item;
                 }
@@ -1417,25 +1453,25 @@ namespace Dependencies
 
             foreach (ModuleTreeViewItem ChildItem in Item.Items)
             {
-				ModuleTreeViewItem matchingItem = FindModuleInTree(ChildItem, Module, Highlight);
-				
-				// early exit as soon as we find a matching node
-				if (matchingItem != null)
+                ModuleTreeViewItem matchingItem = FindModuleInTree(ChildItem, Module, Highlight);
+
+                // early exit as soon as we find a matching node
+                if (matchingItem != null)
                     return matchingItem;
             }
 
             return null;
         }
 
-        
-        public  RelayCommand DoFindModuleInTree
+
+        public RelayCommand DoFindModuleInTree
         {
             get
             {
                 return new RelayCommand((param) =>
                 {
                     DisplayModuleInfo SelectedModule = (param as DisplayModuleInfo);
-                    ModuleTreeViewItem TreeRootItem = this.DllTreeView.Items[0] as ModuleTreeViewItem;
+                    ModuleTreeViewItem TreeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
 
                     FindModuleInTree(TreeRootItem, SelectedModule, true);
                 });
@@ -1453,7 +1489,7 @@ namespace Dependencies
                 });
             }
         }
-#endregion // Commands 
 
+        #endregion // Commands 
     }
 }
