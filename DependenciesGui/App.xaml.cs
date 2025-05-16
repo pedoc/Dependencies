@@ -63,7 +63,7 @@ namespace Dependencies
             }
             else
             {
-                StatusBarMessage = String.Format("Loading PE file \"{0:s}\" successful.", pe.Filepath);
+                StatusBarMessage = $"Loading PE file \"{pe.Filepath}\" successful. Imports Count: {pe.GetImports().Count}";
             }
             
             return pe;

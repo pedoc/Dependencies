@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using Microsoft.Win32;
 using Mono.Cecil;
 using Dependencies.ClrPh;
+using FastDeepCloner;
 using Application = System.Windows.Application;
 using Clipboard = System.Windows.Clipboard;
 using MessageBox = System.Windows.MessageBox;
@@ -73,9 +74,9 @@ namespace Dependencies
 
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            string StrBehaviour = (string)value;
+            string strBehaviour = (string)value;
 
-            switch (StrBehaviour)
+            switch (strBehaviour)
             {
                 default:
                 case "ChildOnly":
@@ -90,9 +91,9 @@ namespace Dependencies
         public object ConvertBack(object value, Type targetType, object parameter,
             System.Globalization.CultureInfo culture)
         {
-            DependencyTreeBehaviour Behaviour = (DependencyTreeBehaviour)value;
+            DependencyTreeBehaviour behaviour = (DependencyTreeBehaviour)value;
 
-            switch (Behaviour)
+            switch (behaviour)
             {
                 default:
                 case DependencyTreeBehaviour.ChildOnly:
@@ -138,9 +139,9 @@ namespace Dependencies
 
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            bool StrOption = (bool)value;
+            bool strOption = (bool)value;
 
-            switch (StrOption)
+            switch (strOption)
             {
                 default:
                 case true:
@@ -153,9 +154,9 @@ namespace Dependencies
         public object ConvertBack(object value, Type targetType, object parameter,
             System.Globalization.CultureInfo culture)
         {
-            BinaryCacheOptionValue Behaviour = (BinaryCacheOptionValue)(int)value;
+            BinaryCacheOptionValue behaviour = (BinaryCacheOptionValue)(int)value;
 
-            switch (Behaviour)
+            switch (behaviour)
             {
                 default:
                 case BinaryCacheOptionValue.Yes:
@@ -241,22 +242,22 @@ namespace Dependencies
         public ModuleTreeViewItem()
         {
             _importsVerified = false;
-            _Parent = null;
+            ParentModule = null;
             Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
         }
 
-        public ModuleTreeViewItem(ModuleTreeViewItem Parent)
+        public ModuleTreeViewItem(ModuleTreeViewItem parent)
         {
             _importsVerified = false;
-            _Parent = Parent;
+            ParentModule = parent;
             Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
         }
 
-        public ModuleTreeViewItem(ModuleTreeViewItem Other, ModuleTreeViewItem Parent)
+        public ModuleTreeViewItem(ModuleTreeViewItem other, ModuleTreeViewItem parent)
         {
             _importsVerified = false;
-            _Parent = Parent;
-            DataContext = new DependencyNodeContext((DependencyNodeContext)Other.DataContext);
+            ParentModule = parent;
+            DataContext = new DependencyNodeContext((DependencyNodeContext)other.DataContext);
             Properties.Settings.Default.PropertyChanged += ModuleTreeViewItem_PropertyChanged;
         }
 
@@ -279,28 +280,20 @@ namespace Dependencies
 
         #region Getters
 
-        public string GetTreeNodeHeaderName(bool FullPath)
+        public string GetTreeNodeHeaderName(bool fullPath)
         {
-            return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo).ModuleName;
+            return ((((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo)!).ModuleName;
         }
 
-        public string ModuleFilePath
-        {
-            get { return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo).Filepath; }
-        }
+        public string ModuleFilePath =>
+            ((((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo)!).Filepath;
 
-        public ModuleTreeViewItem ParentModule
-        {
-            get { return _Parent; }
-        }
+        public ModuleTreeViewItem ParentModule { get; }
 
 
-        public ModuleFlag Flags
-        {
-            get { return ModuleInfo.Flags; }
-        }
+        public ModuleFlag Flags => ModuleInfo.Flags;
 
-        private bool _has_error;
+        private bool _hasError;
 
         public bool HasErrors
         {
@@ -308,7 +301,7 @@ namespace Dependencies
             {
                 if (!_importsVerified)
                 {
-                    _has_error = VerifyModuleImports();
+                    _hasError = VerifyModuleImports();
                     _importsVerified = true;
 
                     // Update tooltip only once some basic checks are done
@@ -316,35 +309,32 @@ namespace Dependencies
                 }
 
                 // propagate error for parent
-                if (_has_error)
+                if (_hasError)
                 {
-                    ModuleTreeViewItem ParentModule = this.ParentModule;
-                    if (ParentModule != null)
+                    ModuleTreeViewItem parentModule = this.ParentModule;
+                    if (parentModule != null)
                     {
-                        ParentModule.HasChildErrors = true;
+                        parentModule.HasChildErrors = true;
                     }
                 }
 
-                return _has_error;
+                return _hasError;
             }
 
             set
             {
-                if (value == _has_error) return;
-                _has_error = value;
+                if (value == _hasError) return;
+                _hasError = value;
                 OnPropertyChanged("HasErrors");
             }
         }
 
 
-        public string Tooltip
-        {
-            get { return ModuleInfo.Status; }
-        }
+        public string Tooltip => ModuleInfo.Status;
 
         public bool HasChildErrors
         {
-            get { return _has_child_errors; }
+            get => _hasChildErrors;
             set
             {
                 if (value)
@@ -357,22 +347,20 @@ namespace Dependencies
                 }
 
                 ToolTip = ModuleInfo.Status;
-                _has_child_errors = true;
+                _hasChildErrors = true;
                 OnPropertyChanged("HasChildErrors");
 
                 // propagate error for parent
-                ModuleTreeViewItem ParentModule = this.ParentModule;
-                if (ParentModule != null)
+                ModuleTreeViewItem parentModule = this.ParentModule;
+                if (parentModule != null)
                 {
-                    ParentModule.HasChildErrors = true;
+                    parentModule.HasChildErrors = true;
                 }
             }
         }
 
-        public DisplayModuleInfo ModuleInfo
-        {
-            get { return (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo); }
-        }
+        public DisplayModuleInfo ModuleInfo =>
+            (((DependencyNodeContext)DataContext).ModuleInfo.Target as DisplayModuleInfo);
 
 
         private bool VerifyModuleImports()
@@ -384,28 +372,28 @@ namespace Dependencies
             }
 
             // no parent : it's probably the root item
-            ModuleTreeViewItem ParentModule = this.ParentModule;
-            if (ParentModule == null)
+            ModuleTreeViewItem parentModule = this.ParentModule;
+            if (parentModule == null)
             {
                 return false;
             }
 
             // Check we have any imports issues
-            foreach (PeImportDll DllImport in ParentModule.ModuleInfo.Imports)
+            foreach (PeImportDll dllImport in parentModule.ModuleInfo.Imports)
             {
-                if (DllImport.Name != ModuleInfo._Name)
+                if (dllImport.Name != ModuleInfo._Name)
                     continue;
 
 
-                List<Tuple<PeImport, bool>> resolvedImports = BinaryCache.LookupImports(DllImport, ModuleInfo.Filepath);
+                List<Tuple<PeImport, bool>> resolvedImports = BinaryCache.LookupImports(dllImport, ModuleInfo.Filepath);
                 if (resolvedImports.Count == 0)
                 {
                     return true;
                 }
 
-                foreach (var Import in resolvedImports)
+                foreach (var import in resolvedImports)
                 {
-                    if (!Import.Item2)
+                    if (!import.Item2)
                     {
                         return true;
                     }
@@ -425,21 +413,21 @@ namespace Dependencies
         {
             get
             {
-                if (_OpenPeviewerCommand == null)
+                if (_openPeviewerCommand == null)
                 {
-                    _OpenPeviewerCommand = new RelayCommand((param) => OpenPeviewer((object)param));
+                    _openPeviewerCommand = new RelayCommand((param) => OpenPeviewer((object)param));
                 }
 
-                return _OpenPeviewerCommand;
+                return _openPeviewerCommand;
             }
         }
 
-        public bool OpenPeviewer(object Context)
+        public bool OpenPeviewer(object context)
         {
             string programPath = Properties.Settings.Default.PeViewerPath;
-            Process PeviewerProcess = new Process();
+            Process peviewerProcess = new Process();
 
-            if (Context == null)
+            if (context == null)
             {
                 return false;
             }
@@ -450,49 +438,48 @@ namespace Dependencies
                 return false;
             }
 
-            string Filepath = ModuleFilePath;
-            if (Filepath == null)
+            string filepath = ModuleFilePath;
+            if (filepath == null)
             {
                 return false;
             }
 
-            PeviewerProcess.StartInfo.FileName = String.Format("\"{0:s}\"", programPath);
-            PeviewerProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", Filepath);
-            return PeviewerProcess.Start();
+            peviewerProcess.StartInfo.FileName = String.Format("\"{0:s}\"", programPath);
+            peviewerProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", filepath);
+            return peviewerProcess.Start();
         }
 
         public RelayCommand OpenNewAppCommand
         {
             get
             {
-                if (_OpenNewAppCommand == null)
+                if (_openNewAppCommand == null)
                 {
-                    _OpenNewAppCommand = new RelayCommand((param) =>
+                    _openNewAppCommand = new RelayCommand((param) =>
                     {
-                        string Filepath = ModuleFilePath;
-                        if (Filepath == null)
+                        string filepath = ModuleFilePath;
+                        if (filepath == null)
                         {
                             return;
                         }
 
-                        Process OtherDependenciesProcess = new Process();
-                        OtherDependenciesProcess.StartInfo.FileName = System.Windows.Forms.Application.ExecutablePath;
-                        OtherDependenciesProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", Filepath);
-                        OtherDependenciesProcess.Start();
+                        Process otherDependenciesProcess = new Process();
+                        otherDependenciesProcess.StartInfo.FileName = System.Windows.Forms.Application.ExecutablePath;
+                        otherDependenciesProcess.StartInfo.Arguments = String.Format("\"{0:s}\"", filepath);
+                        otherDependenciesProcess.Start();
                     });
                 }
 
-                return _OpenNewAppCommand;
+                return _openNewAppCommand;
             }
         }
 
         #endregion // Commands 
 
-        private RelayCommand _OpenPeviewerCommand;
-        private RelayCommand _OpenNewAppCommand;
-        private ModuleTreeViewItem _Parent;
+        private RelayCommand _openPeviewerCommand;
+        private RelayCommand _openNewAppCommand;
         private bool _importsVerified;
-        private bool _has_child_errors;
+        private bool _hasChildErrors;
     }
 
 
@@ -501,45 +488,50 @@ namespace Dependencies
     /// </summary>
     public partial class DependencyWindow : TabItem
     {
-        PE Pe;
+        PE _pe;
         public string RootFolder;
         public string WorkingDirectory;
-        string Filename;
-        PhSymbolProvider SymPrv;
-        SxsEntries SxsEntriesCache;
-        ApiSetSchema ApiSetmapCache;
-        ModulesCache ProcessedModulesCache;
-        DisplayModuleInfo _SelectedModule;
-        bool _DisplayWarning;
+        string _filename;
+        PhSymbolProvider _symPrv;
+        SxsEntries _sxsEntriesCache;
+        ApiSetSchema _apiSetmapCache;
+        ModulesCache _processedModulesCache;
+        DisplayModuleInfo _selectedModule;
+        bool _displayWarning;
 
         public List<string> CustomSearchFolders;
 
         #region PublicAPI
 
-        public DependencyWindow(String Filename, List<string> CustomSearchFolders = null)
+        public DependencyWindow(String filename, List<string> customSearchFolders = null)
         {
             InitializeComponent();
 
-            if (CustomSearchFolders != null)
+            if (customSearchFolders != null)
             {
-                this.CustomSearchFolders = CustomSearchFolders;
+                this.CustomSearchFolders = customSearchFolders;
             }
             else
             {
                 this.CustomSearchFolders = new List<string>();
             }
 
-            this.Filename = Filename;
-            WorkingDirectory = Path.GetDirectoryName(this.Filename);
+            this._filename = filename;
+            WorkingDirectory = Path.GetDirectoryName(this._filename);
             InitializeView();
+        }
+
+        private static PE LoadPe(string filename)
+        {
+            return (Application.Current as App)!.LoadBinary(filename);
         }
 
         public void InitializeView()
         {
-            if (!NativeFile.Exists(Filename))
+            if (!NativeFile.Exists(_filename))
             {
                 MessageBox.Show(
-                    String.Format("{0:s} is not present on the disk", Filename),
+                    String.Format("{0:s} is not present on the disk", _filename),
                     "Invalid PE",
                     MessageBoxButton.OK
                 );
@@ -547,11 +539,11 @@ namespace Dependencies
                 return;
             }
 
-            Pe = (Application.Current as App).LoadBinary(Filename);
-            if (Pe == null || !Pe.LoadSuccessful)
+            _pe = LoadPe(_filename);
+            if (_pe == null || !_pe.LoadSuccessful)
             {
                 MessageBox.Show(
-                    String.Format("{0:s} is not a valid PE-COFF file", Filename),
+                    String.Format("{0:s} is not a valid PE-COFF file", _filename),
                     "Invalid PE",
                     MessageBoxButton.OK
                 );
@@ -559,28 +551,28 @@ namespace Dependencies
                 return;
             }
 
-            SymPrv = new PhSymbolProvider();
-            RootFolder = Path.GetDirectoryName(Filename);
-            SxsEntriesCache = SxsManifest.GetSxsEntries(Pe);
-            ProcessedModulesCache = new ModulesCache();
-            ApiSetmapCache = Phlib.GetApiSetSchema();
-            _SelectedModule = null;
-            _DisplayWarning = false;
+            _symPrv = new PhSymbolProvider();
+            RootFolder = Path.GetDirectoryName(_filename);
+            _sxsEntriesCache = SxsManifest.GetSxsEntries(_pe);
+            _processedModulesCache = new ModulesCache();
+            _apiSetmapCache = Phlib.GetApiSetSchema();
+            _selectedModule = null;
+            _displayWarning = false;
 
             // TODO : Find a way to properly bind commands instead of using this hack
             ModulesList.Items.Clear();
             ModulesList.DoFindModuleInTreeCommand = DoFindModuleInTree;
             ModulesList.ConfigureSearchOrderCommand = ConfigureSearchOrderCommand;
 
-            var RootFilename = Path.GetFileName(Filename);
-            var RootModule = new DisplayModuleInfo(RootFilename, Pe, ModuleSearchStrategy.ROOT);
-            ProcessedModulesCache.Add(new ModuleCacheKey(RootFilename, Filename), RootModule);
-            ModulesList.AddModule(RootModule);
+            var rootFilename = Path.GetFileName(_filename);
+            var rootModule = new DisplayModuleInfo(rootFilename, _pe, ModuleSearchStrategy.ROOT);
+            _processedModulesCache.Add(new ModuleCacheKey(rootFilename, _filename), rootModule);
+            ModulesList.AddModule(rootModule);
 
             ModuleTreeViewItem treeNode = new ModuleTreeViewItem();
             DependencyNodeContext childTreeInfoContext = new DependencyNodeContext()
             {
-                ModuleInfo = new WeakReference(RootModule),
+                ModuleInfo = new WeakReference(rootModule),
                 IsDummy = false
             };
 
@@ -591,8 +583,10 @@ namespace Dependencies
             DllTreeView.Items.Clear();
             DllTreeView.Items.Add(treeNode);
 
+            TreeBuildingBehaviour.DependencyTreeBehaviour settingTreeBehaviour =
+                TreeBuildingBehaviour.GetGlobalBehaviour();
             // Recursively construct tree of dll imports
-            ConstructDependencyTree(treeNode, Pe);
+            ConstructDependencyTree(treeNode, _pe, settingTreeBehaviour);
         }
 
         #endregion PublicAPI
@@ -600,41 +594,51 @@ namespace Dependencies
 
         #region TreeConstruction
 
-        private ImportContext ResolveImport(PeImportDll DllImport)
+        private ImportContext ResolveImport(PeImportDll dllImport)
         {
-            ImportContext ImportModule = new ImportContext();
+            return ResolveImport(dllImport, _pe, _sxsEntriesCache, CustomSearchFolders, WorkingDirectory);
+        }
 
-            ImportModule.PeFilePath = null;
-            ImportModule.PeProperties = null;
-            ImportModule.ModuleName = DllImport.Name;
-            ImportModule.ApiSetModuleName = null;
-            ImportModule.Flags = 0;
-            if (DllImport.IsDelayLoad())
+        private static ImportContext ResolveImport(
+            PeImportDll dllImport,
+            PE rootPe,
+            SxsEntries sxsCache,
+            List<string> customSearchFolders,
+            string workingDirectory)
+        {
+            ImportContext importModule = new ImportContext();
+
+            importModule.PeFilePath = null;
+            importModule.PeProperties = null;
+            importModule.ModuleName = dllImport.Name;
+            importModule.ApiSetModuleName = null;
+            importModule.Flags = 0;
+            if (dllImport.IsDelayLoad())
             {
-                ImportModule.Flags |= ModuleFlag.DelayLoad;
+                importModule.Flags |= ModuleFlag.DelayLoad;
             }
 
-            Tuple<ModuleSearchStrategy, PE> ResolvedModule = BinaryCache.ResolveModule(
-                Pe,
-                DllImport.Name,
-                SxsEntriesCache,
-                CustomSearchFolders,
-                WorkingDirectory
+            Tuple<ModuleSearchStrategy, PE> resolvedModule = BinaryCache.ResolveModule(
+                rootPe,
+                dllImport.Name,
+                sxsCache,
+                customSearchFolders,
+                workingDirectory
             );
 
-            ImportModule.ModuleLocation = ResolvedModule.Item1;
-            if (ImportModule.ModuleLocation != ModuleSearchStrategy.NOT_FOUND)
+            importModule.ModuleLocation = resolvedModule.Item1;
+            if (importModule.ModuleLocation != ModuleSearchStrategy.NOT_FOUND)
             {
-                ImportModule.PeProperties = ResolvedModule.Item2;
+                importModule.PeProperties = resolvedModule.Item2;
 
-                if (ResolvedModule.Item2 != null)
+                if (resolvedModule.Item2 != null)
                 {
-                    ImportModule.PeFilePath = ResolvedModule.Item2.Filepath;
-                    foreach (var Import in BinaryCache.LookupImports(DllImport, ImportModule.PeFilePath))
+                    importModule.PeFilePath = resolvedModule.Item2.Filepath;
+                    foreach (var import in BinaryCache.LookupImports(dllImport, importModule.PeFilePath))
                     {
-                        if (!Import.Item2)
+                        if (!import.Item2)
                         {
-                            ImportModule.Flags |= ModuleFlag.MissingImports;
+                            importModule.Flags |= ModuleFlag.MissingImports;
                             break;
                         }
                     }
@@ -642,142 +646,176 @@ namespace Dependencies
             }
             else
             {
-                ImportModule.Flags |= ModuleFlag.NotFound;
+                importModule.Flags |= ModuleFlag.NotFound;
             }
 
             // special case for apiset schema
-            ImportModule.IsApiSet = (ImportModule.ModuleLocation == ModuleSearchStrategy.ApiSetSchema);
-            if (ImportModule.IsApiSet)
+            importModule.IsApiSet = (importModule.ModuleLocation == ModuleSearchStrategy.ApiSetSchema);
+            if (importModule.IsApiSet)
             {
-                ImportModule.Flags |= ModuleFlag.ApiSet;
-                ImportModule.ApiSetModuleName = BinaryCache.LookupApiSetLibrary(DllImport.Name);
+                importModule.Flags |= ModuleFlag.ApiSet;
+                importModule.ApiSetModuleName = BinaryCache.LookupApiSetLibrary(dllImport.Name);
 
-                if (DllImport.Name.StartsWith("ext-"))
+                if (dllImport.Name.StartsWith("ext-"))
                 {
-                    ImportModule.Flags |= ModuleFlag.ApiSetExt;
+                    importModule.Flags |= ModuleFlag.ApiSetExt;
                 }
             }
 
-            return ImportModule;
+            return importModule;
         }
 
-        private void TriggerWarningOnAppvIsvImports(string DllImportName)
+        private static void TriggerWarningOnAppvIsvImports(string dllImportName, ref bool displayWarning)
         {
-            if (String.Compare(DllImportName, "AppvIsvSubsystems32.dll", StringComparison.OrdinalIgnoreCase) == 0 ||
-                String.Compare(DllImportName, "AppvIsvSubsystems64.dll", StringComparison.OrdinalIgnoreCase) == 0)
+            if (String.Compare(dllImportName, "AppvIsvSubsystems32.dll", StringComparison.OrdinalIgnoreCase) == 0 ||
+                String.Compare(dllImportName, "AppvIsvSubsystems64.dll", StringComparison.OrdinalIgnoreCase) == 0)
             {
-                if (!_DisplayWarning)
+                if (!displayWarning)
                 {
                     MessageBoxResult result = MessageBox.Show(
                         "This binary use the App-V containerization technology which fiddle with search directories and PATH env in ways Dependencies can't handle.\n\nFollowing results are probably not quite exact.",
                         "App-V ISV disclaimer"
                     );
 
-                    _DisplayWarning = true; // prevent the same warning window to popup several times
+                    displayWarning = true; // prevent the same warning window to popup several times
                 }
             }
         }
 
-        private void ProcessAppInitDlls(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe,
-            ImportContext ImportModule)
+        private void TriggerWarningOnAppvIsvImports(string dllImportName)
         {
-            List<PeImportDll> PeImports = AnalyzedPe.GetImports();
+            TriggerWarningOnAppvIsvImports(dllImportName, ref _displayWarning);
+        }
+
+        private void ProcessAppInitDlls(
+            Dictionary<string, ImportContext> newTreeContexts,
+            PE analyzedPe,
+            ImportContext importModule)
+        {
+            ProcessAppInitDlls(_pe, newTreeContexts, analyzedPe, importModule, _sxsEntriesCache, CustomSearchFolders,
+                WorkingDirectory);
+        }
+
+        private static void ProcessAppInitDlls(
+            PE rootPe,
+            Dictionary<string, ImportContext> newTreeContexts,
+            PE analyzedPe,
+            ImportContext importModule,
+            SxsEntries sxsEntriesCache,
+            List<string> customSearchFolders,
+            string workingDirectory
+        )
+        {
+            List<PeImportDll> peImports = analyzedPe.GetImports();
 
             // only user32 triggers appinit dlls
-            string User32Filepath = Path.Combine(FindPe.GetSystemPath(Pe), "user32.dll");
-            if (ImportModule.PeFilePath != User32Filepath)
+            string user32Filepath = Path.Combine(FindPe.GetSystemPath(rootPe), "user32.dll");
+            if (importModule.PeFilePath != user32Filepath)
             {
                 return;
             }
 
-            string AppInitRegistryKey =
-                (Pe.IsArm32Dll()) ? "SOFTWARE\\WowAA32Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
-                (Pe.IsWow64Dll()) ? "SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
+            string appInitRegistryKey =
+                (rootPe.IsArm32Dll()) ? "SOFTWARE\\WowAA32Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
+                (rootPe.IsWow64Dll()) ? "SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows" :
                 "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows";
 
             // Opening registry values
             RegistryKey localKey =
                 RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-            localKey = localKey.OpenSubKey(AppInitRegistryKey);
-            int LoadAppInitDlls = (int)localKey.GetValue("LoadAppInit_DLLs", 0);
-            string AppInitDlls = (string)localKey.GetValue("AppInit_DLLs", "");
-            if (LoadAppInitDlls == 0 || String.IsNullOrEmpty(AppInitDlls))
+            localKey = localKey.OpenSubKey(appInitRegistryKey);
+            int loadAppInitDlls = (int)localKey.GetValue("LoadAppInit_DLLs", 0);
+            string appInitDlls = (string)localKey.GetValue("AppInit_DLLs", "");
+            if (loadAppInitDlls == 0 || String.IsNullOrEmpty(appInitDlls))
             {
                 return;
             }
 
             // Extremely crude parser. TODO : Add support for quotes wrapped paths with spaces
-            foreach (var AppInitDll in AppInitDlls.Split(' '))
+            foreach (var appInitDll in appInitDlls.Split(' '))
             {
-                Debug.WriteLine("AppInit loading " + AppInitDll);
+                Debug.WriteLine("AppInit loading " + appInitDll);
 
                 // Do not process twice the same imported module
-                if (null != PeImports.Find(module => module.Name == AppInitDll))
+                if (null != peImports.Find(module => module.Name == appInitDll))
                 {
                     continue;
                 }
 
-                if (NewTreeContexts.ContainsKey(AppInitDll))
+                if (newTreeContexts.ContainsKey(appInitDll))
                 {
                     continue;
                 }
 
-                ImportContext AppInitImportModule = new ImportContext();
-                AppInitImportModule.PeFilePath = null;
-                AppInitImportModule.PeProperties = null;
-                AppInitImportModule.ModuleName = AppInitDll;
-                AppInitImportModule.ApiSetModuleName = null;
-                AppInitImportModule.Flags = 0;
-                AppInitImportModule.ModuleLocation = ModuleSearchStrategy.AppInitDLL;
+                ImportContext appInitImportModule = new ImportContext();
+                appInitImportModule.PeFilePath = null;
+                appInitImportModule.PeProperties = null;
+                appInitImportModule.ModuleName = appInitDll;
+                appInitImportModule.ApiSetModuleName = null;
+                appInitImportModule.Flags = 0;
+                appInitImportModule.ModuleLocation = ModuleSearchStrategy.AppInitDLL;
 
 
-                Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                    Pe,
-                    AppInitDll,
-                    SxsEntriesCache,
-                    CustomSearchFolders,
-                    WorkingDirectory
+                Tuple<ModuleSearchStrategy, PE> resolvedAppInitModule = BinaryCache.ResolveModule(
+                    rootPe,
+                    appInitDll,
+                    sxsEntriesCache,
+                    customSearchFolders,
+                    workingDirectory
                 );
-                if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
+                if (resolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                 {
-                    AppInitImportModule.PeProperties = ResolvedAppInitModule.Item2;
-                    AppInitImportModule.PeFilePath = ResolvedAppInitModule.Item2.Filepath;
+                    appInitImportModule.PeProperties = resolvedAppInitModule.Item2;
+                    appInitImportModule.PeFilePath = resolvedAppInitModule.Item2.Filepath;
                 }
                 else
                 {
-                    AppInitImportModule.Flags |= ModuleFlag.NotFound;
+                    appInitImportModule.Flags |= ModuleFlag.NotFound;
                 }
 
-                NewTreeContexts.Add(AppInitDll, AppInitImportModule);
+                newTreeContexts.Add(appInitDll, appInitImportModule);
             }
         }
 
-        private void ProcessClrImports(Dictionary<string, ImportContext> NewTreeContexts, PE AnalyzedPe)
+        private void ProcessClrImports(Dictionary<string, ImportContext> newTreeContexts, PE analyzedPe)
         {
-            List<PeImportDll> PeImports = AnalyzedPe.GetImports();
+            ProcessClrImports(RootFolder, _pe, newTreeContexts, analyzedPe, _sxsEntriesCache, CustomSearchFolders,
+                WorkingDirectory);
+        }
+
+        private static void ProcessClrImports(
+            string rootFolder,
+            PE rootPe,
+            Dictionary<string, ImportContext> newTreeContexts,
+            PE analyzedPe,
+            SxsEntries sxsEntriesCache,
+            List<string> customSearchFolders,
+            string workingDirectory)
+        {
+            List<PeImportDll> peImports = analyzedPe.GetImports();
 
             var resolver = new DefaultAssemblyResolver();
-            resolver.AddSearchDirectory(RootFolder);
+            resolver.AddSearchDirectory(rootFolder);
 
             // Parse it via cecil
-            AssemblyDefinition PeAssembly = null;
+            AssemblyDefinition peAssembly = null;
             try
             {
-                PeAssembly = AssemblyDefinition.ReadAssembly(AnalyzedPe.Filepath);
+                peAssembly = AssemblyDefinition.ReadAssembly(analyzedPe.Filepath);
             }
             catch (BadImageFormatException)
             {
                 MessageBoxResult result = MessageBox.Show(
                     String.Format(
                         "Cecil could not correctly parse {0:s}, which can happens on .NET Core executables. CLR imports will be not shown",
-                        AnalyzedPe.Filepath),
+                        analyzedPe.Filepath),
                     "CLR parsing fail"
                 );
 
                 return;
             }
 
-            foreach (var module in PeAssembly.Modules)
+            foreach (var module in peAssembly.Modules)
             {
                 // Process CLR referenced assemblies
                 foreach (var assembly in module.AssemblyReferences)
@@ -789,187 +827,327 @@ namespace Dependencies
                     }
                     catch (AssemblyResolutionException)
                     {
-                        ImportContext AppInitImportModule = new ImportContext();
-                        AppInitImportModule.PeFilePath = null;
-                        AppInitImportModule.PeProperties = null;
-                        AppInitImportModule.ModuleName = Path.GetFileName(assembly.Name);
-                        AppInitImportModule.ApiSetModuleName = null;
-                        AppInitImportModule.Flags = ModuleFlag.ClrReference;
-                        AppInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
-                        AppInitImportModule.Flags |= ModuleFlag.NotFound;
+                        ImportContext appInitImportModule = new ImportContext();
+                        appInitImportModule.PeFilePath = null;
+                        appInitImportModule.PeProperties = null;
+                        appInitImportModule.ModuleName = Path.GetFileName(assembly.Name);
+                        appInitImportModule.ApiSetModuleName = null;
+                        appInitImportModule.Flags = ModuleFlag.ClrReference;
+                        appInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
+                        appInitImportModule.Flags |= ModuleFlag.NotFound;
 
-                        if (!NewTreeContexts.ContainsKey(AppInitImportModule.ModuleName))
+                        if (!newTreeContexts.ContainsKey(appInitImportModule.ModuleName))
                         {
-                            NewTreeContexts.Add(AppInitImportModule.ModuleName, AppInitImportModule);
+                            newTreeContexts.Add(appInitImportModule.ModuleName, appInitImportModule);
                         }
 
                         continue;
                     }
 
-                    foreach (var AssemblyModule in definition.Modules)
+                    foreach (var assemblyModule in definition.Modules)
                     {
-                        Debug.WriteLine("Referenced Assembling loading " + AssemblyModule.Name + " : " +
-                                        AssemblyModule.FileName);
+                        Debug.WriteLine("Referenced Assembling loading " + assemblyModule.Name + " : " +
+                                        assemblyModule.FileName);
 
                         // Do not process twice the same imported module
-                        if (null != PeImports.Find(mod => mod.Name == Path.GetFileName(AssemblyModule.FileName)))
+                        if (null != peImports.Find(mod => mod.Name == Path.GetFileName(assemblyModule.FileName)))
                         {
                             continue;
                         }
 
-                        ImportContext AppInitImportModule = new ImportContext();
-                        AppInitImportModule.PeFilePath = null;
-                        AppInitImportModule.PeProperties = null;
-                        AppInitImportModule.ModuleName = Path.GetFileName(AssemblyModule.FileName);
-                        AppInitImportModule.ApiSetModuleName = null;
-                        AppInitImportModule.Flags = ModuleFlag.ClrReference;
-                        AppInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
+                        ImportContext appInitImportModule = new ImportContext();
+                        appInitImportModule.PeFilePath = null;
+                        appInitImportModule.PeProperties = null;
+                        appInitImportModule.ModuleName = Path.GetFileName(assemblyModule.FileName);
+                        appInitImportModule.ApiSetModuleName = null;
+                        appInitImportModule.Flags = ModuleFlag.ClrReference;
+                        appInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
 
-                        Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                            Pe,
-                            AssemblyModule.FileName,
-                            WorkingDirectory
+                        Tuple<ModuleSearchStrategy, PE> resolvedAppInitModule = BinaryCache.ResolveModule(
+                            rootPe,
+                            assemblyModule.FileName,
+                            workingDirectory
                         );
-                        if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
+                        if (resolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                         {
-                            AppInitImportModule.PeProperties = ResolvedAppInitModule.Item2;
-                            AppInitImportModule.PeFilePath = ResolvedAppInitModule.Item2.Filepath;
+                            appInitImportModule.PeProperties = resolvedAppInitModule.Item2;
+                            appInitImportModule.PeFilePath = resolvedAppInitModule.Item2.Filepath;
                         }
                         else
                         {
-                            AppInitImportModule.Flags |= ModuleFlag.NotFound;
+                            appInitImportModule.Flags |= ModuleFlag.NotFound;
                         }
 
-                        if (!NewTreeContexts.ContainsKey(AppInitImportModule.ModuleName))
+                        if (!newTreeContexts.ContainsKey(appInitImportModule.ModuleName))
                         {
-                            NewTreeContexts.Add(AppInitImportModule.ModuleName, AppInitImportModule);
+                            newTreeContexts.Add(appInitImportModule.ModuleName, appInitImportModule);
                         }
                     }
                 }
 
                 // Process unmanaged dlls for native calls
-                foreach (var UnmanagedModule in module.ModuleReferences)
+                foreach (var unmanagedModule in module.ModuleReferences)
                 {
                     // some clr dll have a reference to an "empty" dll
-                    if (UnmanagedModule.Name.Length == 0)
+                    if (unmanagedModule.Name.Length == 0)
                     {
                         continue;
                     }
 
-                    Debug.WriteLine("Referenced module loading " + UnmanagedModule.Name);
+                    Debug.WriteLine("Referenced module loading " + unmanagedModule.Name);
 
                     // Do not process twice the same imported module
-                    if (null != PeImports.Find(m => m.Name == UnmanagedModule.Name))
+                    if (null != peImports.Find(m => m.Name == unmanagedModule.Name))
                     {
                         continue;
                     }
 
 
-                    ImportContext AppInitImportModule = new ImportContext();
-                    AppInitImportModule.PeFilePath = null;
-                    AppInitImportModule.PeProperties = null;
-                    AppInitImportModule.ModuleName = UnmanagedModule.Name;
-                    AppInitImportModule.ApiSetModuleName = null;
-                    AppInitImportModule.Flags = ModuleFlag.ClrReference;
-                    AppInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
+                    ImportContext appInitImportModule = new ImportContext();
+                    appInitImportModule.PeFilePath = null;
+                    appInitImportModule.PeProperties = null;
+                    appInitImportModule.ModuleName = unmanagedModule.Name;
+                    appInitImportModule.ApiSetModuleName = null;
+                    appInitImportModule.Flags = ModuleFlag.ClrReference;
+                    appInitImportModule.ModuleLocation = ModuleSearchStrategy.ClrAssembly;
 
-                    Tuple<ModuleSearchStrategy, PE> ResolvedAppInitModule = BinaryCache.ResolveModule(
-                        Pe,
-                        UnmanagedModule.Name,
-                        SxsEntriesCache,
-                        CustomSearchFolders,
-                        WorkingDirectory
+                    Tuple<ModuleSearchStrategy, PE> resolvedAppInitModule = BinaryCache.ResolveModule(
+                        rootPe,
+                        unmanagedModule.Name,
+                        sxsEntriesCache,
+                        customSearchFolders,
+                        workingDirectory
                     );
-                    if (ResolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
+                    if (resolvedAppInitModule.Item1 != ModuleSearchStrategy.NOT_FOUND)
                     {
-                        AppInitImportModule.PeProperties = ResolvedAppInitModule.Item2;
-                        AppInitImportModule.PeFilePath = ResolvedAppInitModule.Item2.Filepath;
+                        appInitImportModule.PeProperties = resolvedAppInitModule.Item2;
+                        appInitImportModule.PeFilePath = resolvedAppInitModule.Item2.Filepath;
                     }
 
-                    if (!NewTreeContexts.ContainsKey(AppInitImportModule.ModuleName))
+                    if (!newTreeContexts.ContainsKey(appInitImportModule.ModuleName))
                     {
-                        NewTreeContexts.Add(AppInitImportModule.ModuleName, AppInitImportModule);
+                        newTreeContexts.Add(appInitImportModule.ModuleName, appInitImportModule);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Background processing of a single PE file.
-        /// It can be lengthy since there are disk access (and misses).
-        /// </summary>
-        /// <param name="NewTreeContexts"> This variable is passed as reference to be updated since this function is run in a separate thread. </param>
-        /// <param name="newPe"> Current PE file analyzed </param>
-        private void ProcessPe(Dictionary<string, ImportContext> NewTreeContexts, PE newPe)
+        private void ProcessPe(
+            Dictionary<string, ImportContext> newTreeContexts,
+            PE newPe)
         {
-            List<PeImportDll> PeImports = newPe.GetImports();
+            ProcessPe(RootFolder, _pe, newTreeContexts, newPe, _sxsEntriesCache, CustomSearchFolders, WorkingDirectory);
+        }
 
-            foreach (PeImportDll DllImport in PeImports)
+        private static void ProcessPe(
+            string rootFolder,
+            PE rootPe,
+            Dictionary<string, ImportContext> newTreeContexts,
+            PE newPe,
+            SxsEntries sxsCache,
+            List<string> customSearchFolders,
+            string workingDirectory)
+        {
+            List<PeImportDll> peImports = newPe.GetImports();
+
+            foreach (PeImportDll dllImport in peImports)
             {
                 // Ignore already processed imports
-                if (NewTreeContexts.ContainsKey(DllImport.Name))
+                if (newTreeContexts.ContainsKey(dllImport.Name))
                 {
                     continue;
                 }
 
                 // Find Dll in "paths"
-                ImportContext ImportModule = ResolveImport(DllImport);
-
+                ImportContext importModule =
+                    ResolveImport(dllImport, rootPe, sxsCache, customSearchFolders, workingDirectory);
+                bool _ = false;
                 // add warning for appv isv applications 
-                TriggerWarningOnAppvIsvImports(DllImport.Name);
+                TriggerWarningOnAppvIsvImports(dllImport.Name, ref _);
 
-                NewTreeContexts.Add(DllImport.Name, ImportModule);
+                newTreeContexts.Add(dllImport.Name, importModule);
 
                 // AppInitDlls are triggered by user32.dll, so if the binary does not import user32.dll they are not loaded.
-                ProcessAppInitDlls(NewTreeContexts, newPe, ImportModule);
+                ProcessAppInitDlls(rootPe, newTreeContexts, newPe, importModule, sxsCache, customSearchFolders,
+                    workingDirectory);
             }
 
             // This should happen only if this is validated to be a C# assembly
             if (newPe.IsClrDll())
             {
                 // We use Mono.Cecil to enumerate its references
-                ProcessClrImports(NewTreeContexts, newPe);
+                ProcessClrImports(rootFolder, rootPe, newTreeContexts, newPe, sxsCache, customSearchFolders,
+                    workingDirectory);
             }
         }
 
         private class BacklogImport : Tuple<ModuleTreeViewItem, string>
         {
-            public BacklogImport(ModuleTreeViewItem Node, string Filepath)
-                : base(Node, Filepath)
+            public BacklogImport(ModuleTreeViewItem node, string filepath)
+                : base(node, filepath)
             {
             }
         }
 
-        private void ConstructDependencyTree(ModuleTreeViewItem RootNode, string FilePath, int RecursionLevel = 0)
+        private void ConstructDependencyTree(
+            ModuleTreeViewItem rootNode,
+            string filePath,
+            TreeBuildingBehaviour.DependencyTreeBehaviour settingTreeBehaviour,
+            int recursionLevel = 0,
+            Action onRunWorkerCompleted = null)
         {
-            PE CurrentPE = (Application.Current as App).LoadBinary(FilePath);
+            PE currentPe = LoadPe(filePath);
 
-            if (null == CurrentPE)
+            if (null == currentPe)
             {
                 return;
             }
 
-            ConstructDependencyTree(RootNode, CurrentPE, RecursionLevel);
+            ConstructDependencyTree(rootNode, currentPe, settingTreeBehaviour, recursionLevel, onRunWorkerCompleted);
         }
 
-        private void ConstructDependencyTree(ModuleTreeViewItem RootNode, PE CurrentPE, int RecursionLevel = 0)
+        private static void ConstructDependencyTreeV2(
+            string rootFolder,
+            PE rootPe,
+            PE newPe,
+            Dictionary<string, ImportContext> newTreeContexts,
+            SxsEntries sxsCache,
+            List<string> customSearchFolders,
+            string workingDirectory,
+            Dictionary<string, DisplayModuleInfo> modulesCache,
+            List<DisplayModuleInfo> moduleList,
+            TreeBuildingBehaviour.DependencyTreeBehaviour settingTreeBehaviour,
+            int recursionLevel = 0)
+        {
+            ProcessPe(rootFolder, rootPe, newTreeContexts, newPe, sxsCache, customSearchFolders, workingDirectory);
+
+            List<(ModuleTreeViewItem node, string filepath)> peProcessingBacklog =
+                new List<(ModuleTreeViewItem node, string filepath)>();
+            foreach (ImportContext newTreeContext in newTreeContexts.Values)
+            {
+                if (newTreeContext.ModuleLocation == ModuleSearchStrategy.NOT_FOUND) continue;
+
+                string moduleName = newTreeContext.ModuleName;
+                var moduleKey = newTreeContext.PeFilePath;
+
+                // Newly seen modules
+                if (!modulesCache.ContainsKey(moduleKey))
+                {
+                    // Missing module "found"
+                    if ((newTreeContext.PeFilePath == null) || !NativeFile.Exists(newTreeContext.PeFilePath))
+                    {
+                        if (newTreeContext.IsApiSet)
+                        {
+                            modulesCache[moduleKey] =
+                                new ApiSetNotFoundModuleInfo(moduleName, newTreeContext.ApiSetModuleName);
+                        }
+                        else
+                        {
+                            modulesCache[moduleKey] = new NotFoundModuleInfo(moduleName);
+                        }
+                    }
+                    else
+                    {
+                        if (newTreeContext.IsApiSet)
+                        {
+                            var apiSetContractModule = new DisplayModuleInfo(
+                                newTreeContext.ApiSetModuleName,
+                                newTreeContext.PeProperties,
+                                newTreeContext.ModuleLocation,
+                                newTreeContext.Flags);
+                            var newModule =
+                                new ApiSetModuleInfo(newTreeContext.ModuleName, ref apiSetContractModule);
+
+                            modulesCache[moduleKey] = newModule;
+
+                            if (settingTreeBehaviour == TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive)
+                            {
+                                peProcessingBacklog.Add(
+                                    new(
+                                        null,
+                                        apiSetContractModule.ModuleName));
+                            }
+                        }
+                        else
+                        {
+                            var newModule = new DisplayModuleInfo(
+                                newTreeContext.ModuleName,
+                                newTreeContext.PeProperties,
+                                newTreeContext.ModuleLocation,
+                                newTreeContext.Flags);
+                            modulesCache[moduleKey] = newModule;
+
+                            switch (settingTreeBehaviour)
+                            {
+                                case TreeBuildingBehaviour.DependencyTreeBehaviour.RecursiveOnlyOnDirectImports:
+                                    if ((newTreeContext.Flags & ModuleFlag.DelayLoad) == 0)
+                                    {
+                                        peProcessingBacklog.Add(new(null,
+                                            newModule.ModuleName));
+                                    }
+
+                                    break;
+
+                                case TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive:
+                                    peProcessingBacklog.Add(new(null, newModule.ModuleName));
+                                    break;
+                            }
+                        }
+                    }
+
+                    moduleList.Add(modulesCache[moduleKey]);
+                }
+                else
+                {
+                }
+            }
+
+            bool doProcessNextLevel =
+                (settingTreeBehaviour != TreeBuildingBehaviour.DependencyTreeBehaviour.ChildOnly) &&
+                (recursionLevel < Properties.Settings.Default.TreeDepth) &&
+                peProcessingBacklog.Count > 0;
+
+            if (doProcessNextLevel)
+            {
+                foreach (var importNode in peProcessingBacklog)
+                {
+                    var tNewPe = LoadPe(importNode.filepath);
+                    ConstructDependencyTreeV2(
+                        rootFolder,
+                        rootPe,
+                        tNewPe,
+                        newTreeContexts,
+                        sxsCache,
+                        customSearchFolders,
+                        workingDirectory,
+                        modulesCache,
+                        moduleList,
+                        settingTreeBehaviour,
+                        recursionLevel + 1);
+                }
+            }
+        }
+
+        private void ConstructDependencyTree(
+            ModuleTreeViewItem rootNode,
+            PE currentPe,
+            TreeBuildingBehaviour.DependencyTreeBehaviour settingTreeBehaviour,
+            int recursionLevel = 0,
+            Action onRunWorkerCompleted = null)
         {
             // "Closured" variables (it 's a scope hack really).
-            Dictionary<string, ImportContext> NewTreeContexts = new Dictionary<string, ImportContext>();
+            Dictionary<string, ImportContext> newTreeContexts = new Dictionary<string, ImportContext>();
 
             BackgroundWorker bw = new BackgroundWorker();
             bw.WorkerReportsProgress = true; // useless here for now
-            UpdateStatusBarMessage("Analyzing PE File " + CurrentPE.Filepath);
+            UpdateStatusBarMessage("Analyzing PE File " + currentPe.Filepath);
 
-            bw.DoWork += (sender, e) => { ProcessPe(NewTreeContexts, CurrentPE); };
+            bw.DoWork += (sender, e) => { ProcessPe(newTreeContexts, currentPe); };
 
 
             bw.RunWorkerCompleted += (sender, e) =>
             {
-                TreeBuildingBehaviour.DependencyTreeBehaviour SettingTreeBehaviour =
-                    TreeBuildingBehaviour.GetGlobalBehaviour();
-                List<ModuleTreeViewItem> PeWithDummyEntries = new List<ModuleTreeViewItem>();
-                List<BacklogImport> PEProcessingBacklog = new List<BacklogImport>();
+                List<BacklogImport> peProcessingBacklog = new List<BacklogImport>();
 
                 // Important !
                 // 
@@ -977,75 +1155,81 @@ namespace Dependencies
                 // which is authorized to manipulate UI elements. The BackgroundWorker is not.
                 //
 
-                foreach (ImportContext NewTreeContext in NewTreeContexts.Values)
+                foreach (ImportContext newTreeContext in newTreeContexts.Values)
                 {
-                    ModuleTreeViewItem childTreeNode = new ModuleTreeViewItem(RootNode);
+                    ModuleTreeViewItem childTreeNode = new ModuleTreeViewItem(rootNode);
                     DependencyNodeContext childTreeNodeContext = new DependencyNodeContext();
                     childTreeNodeContext.IsDummy = false;
 
-                    string ModuleName = NewTreeContext.ModuleName;
-                    string ModuleFilePath = NewTreeContext.PeFilePath;
-                    ModuleCacheKey ModuleKey = new ModuleCacheKey(NewTreeContext);
+                    string moduleName = newTreeContext.ModuleName;
+                    string moduleFilePath = newTreeContext.PeFilePath;
+                    ModuleCacheKey moduleKey = new ModuleCacheKey(newTreeContext);
 
                     // Newly seen modules
-                    if (!ProcessedModulesCache.ContainsKey(ModuleKey))
+                    if (!_processedModulesCache.ContainsKey(moduleKey))
                     {
                         // Missing module "found"
-                        if ((NewTreeContext.PeFilePath == null) || !NativeFile.Exists(NewTreeContext.PeFilePath))
+                        if ((newTreeContext.PeFilePath == null) || !NativeFile.Exists(newTreeContext.PeFilePath))
                         {
-                            if (NewTreeContext.IsApiSet)
+                            if (newTreeContext.IsApiSet)
                             {
-                                ProcessedModulesCache[ModuleKey] =
-                                    new ApiSetNotFoundModuleInfo(ModuleName, NewTreeContext.ApiSetModuleName);
+                                _processedModulesCache[moduleKey] =
+                                    new ApiSetNotFoundModuleInfo(moduleName, newTreeContext.ApiSetModuleName);
                             }
                             else
                             {
-                                ProcessedModulesCache[ModuleKey] = new NotFoundModuleInfo(ModuleName);
+                                _processedModulesCache[moduleKey] = new NotFoundModuleInfo(moduleName);
                             }
                         }
                         else
                         {
-                            if (NewTreeContext.IsApiSet)
+                            if (newTreeContext.IsApiSet)
                             {
-                                var ApiSetContractModule = new DisplayModuleInfo(NewTreeContext.ApiSetModuleName,
-                                    NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
-                                var NewModule =
-                                    new ApiSetModuleInfo(NewTreeContext.ModuleName, ref ApiSetContractModule);
+                                var apiSetContractModule = new DisplayModuleInfo(
+                                    newTreeContext.ApiSetModuleName,
+                                    newTreeContext.PeProperties,
+                                    newTreeContext.ModuleLocation,
+                                    newTreeContext.Flags);
+                                var newModule =
+                                    new ApiSetModuleInfo(newTreeContext.ModuleName, ref apiSetContractModule);
 
-                                ProcessedModulesCache[ModuleKey] = NewModule;
+                                _processedModulesCache[moduleKey] = newModule;
 
-                                if (SettingTreeBehaviour == TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive)
+                                if (settingTreeBehaviour == TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive)
                                 {
-                                    PEProcessingBacklog.Add(new BacklogImport(childTreeNode,
-                                        ApiSetContractModule.ModuleName));
+                                    peProcessingBacklog.Add(new BacklogImport(childTreeNode,
+                                        apiSetContractModule.ModuleName));
                                 }
                             }
                             else
                             {
-                                var NewModule = new DisplayModuleInfo(NewTreeContext.ModuleName,
-                                    NewTreeContext.PeProperties, NewTreeContext.ModuleLocation, NewTreeContext.Flags);
-                                ProcessedModulesCache[ModuleKey] = NewModule;
+                                var newModule = new DisplayModuleInfo(
+                                    newTreeContext.ModuleName,
+                                    newTreeContext.PeProperties,
+                                    newTreeContext.ModuleLocation,
+                                    newTreeContext.Flags);
+                                _processedModulesCache[moduleKey] = newModule;
 
-                                switch (SettingTreeBehaviour)
+                                switch (settingTreeBehaviour)
                                 {
                                     case TreeBuildingBehaviour.DependencyTreeBehaviour.RecursiveOnlyOnDirectImports:
-                                        if ((NewTreeContext.Flags & ModuleFlag.DelayLoad) == 0)
+                                        if ((newTreeContext.Flags & ModuleFlag.DelayLoad) == 0)
                                         {
-                                            PEProcessingBacklog.Add(new BacklogImport(childTreeNode,
-                                                NewModule.ModuleName));
+                                            peProcessingBacklog.Add(new BacklogImport(childTreeNode,
+                                                newModule.ModuleName));
                                         }
 
                                         break;
 
                                     case TreeBuildingBehaviour.DependencyTreeBehaviour.Recursive:
-                                        PEProcessingBacklog.Add(new BacklogImport(childTreeNode, NewModule.ModuleName));
+                                        peProcessingBacklog.Add(new BacklogImport(childTreeNode, newModule.ModuleName));
                                         break;
                                 }
                             }
                         }
 
                         // add it to the module list
-                        ModulesList.AddModule(ProcessedModulesCache[ModuleKey]);
+                        ModulesList.AddModule(_processedModulesCache[moduleKey]);
                     }
 
                     // Since we uniquely process PE, for thoses who have already been "seen",
@@ -1057,30 +1241,30 @@ namespace Dependencies
 
                     // Some dot net dlls give 0 for GetImports() but they will always have imports
                     // that can be detected using the special CLR dll processing we do. 
-                    if ((NewTreeContext.PeProperties != null) &&
-                        (NewTreeContext.PeProperties.GetImports().Count > 0 || NewTreeContext.PeProperties.IsClrDll()))
+                    if ((newTreeContext.PeProperties != null) &&
+                        (newTreeContext.PeProperties.GetImports().Count > 0 || newTreeContext.PeProperties.IsClrDll()))
                     {
-                        ModuleTreeViewItem DummyEntry = new ModuleTreeViewItem();
-                        DependencyNodeContext DummyContext = new DependencyNodeContext()
+                        ModuleTreeViewItem dummyEntry = new ModuleTreeViewItem();
+                        DependencyNodeContext dummyContext = new DependencyNodeContext()
                         {
                             ModuleInfo = new WeakReference(new NotFoundModuleInfo("Dummy")),
                             IsDummy = true
                         };
 
-                        DummyEntry.DataContext = DummyContext;
-                        DummyEntry.Header = "@Dummy : if you see this header, it's a bug.";
-                        DummyEntry.IsExpanded = false;
+                        dummyEntry.DataContext = dummyContext;
+                        dummyEntry.Header = "@Dummy : if you see this header, it's a bug.";
+                        dummyEntry.IsExpanded = false;
 
-                        childTreeNode.Items.Add(DummyEntry);
+                        childTreeNode.Items.Add(dummyEntry);
                         childTreeNode.Expanded += ResolveDummyEntries;
                     }
 
                     // Add to tree view
-                    childTreeNodeContext.ModuleInfo = new WeakReference(ProcessedModulesCache[ModuleKey]);
+                    childTreeNodeContext.ModuleInfo = new WeakReference(_processedModulesCache[moduleKey]);
                     childTreeNode.DataContext = childTreeNodeContext;
                     childTreeNode.Header =
                         childTreeNode.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
-                    RootNode.Items.Add(childTreeNode);
+                    rootNode.Items.Add(childTreeNode);
                 }
 
 
@@ -1088,19 +1272,27 @@ namespace Dependencies
                 //	1. Recursive tree building has been activated
                 //  2. Recursion is not hitting the max depth level
                 bool doProcessNextLevel =
-                    (SettingTreeBehaviour != TreeBuildingBehaviour.DependencyTreeBehaviour.ChildOnly) &&
-                    (RecursionLevel < Properties.Settings.Default.TreeDepth);
+                    (settingTreeBehaviour != TreeBuildingBehaviour.DependencyTreeBehaviour.ChildOnly) &&
+                    (recursionLevel < Properties.Settings.Default.TreeDepth) &&
+                    peProcessingBacklog.Count > 0;
 
                 if (doProcessNextLevel)
                 {
-                    foreach (var ImportNode in PEProcessingBacklog)
+                    foreach (var importNode in peProcessingBacklog)
                     {
-                        ConstructDependencyTree(ImportNode.Item1, ImportNode.Item2,
-                            RecursionLevel + 1); // warning : recursive call
+                        ConstructDependencyTree(
+                            importNode.Item1,
+                            importNode.Item2,
+                            settingTreeBehaviour,
+                            recursionLevel + 1,
+                            onRunWorkerCompleted); // warning : recursive call
                     }
                 }
 
-                UpdateStatusBarMessage(CurrentPE.Filepath + " Loaded successfully.");
+                UpdateStatusBarMessage(rootNode.ModuleFilePath + " Loaded successfully. Modules " +
+                                       ModulesList.Items.Count);
+
+                onRunWorkerCompleted?.Invoke();
             };
 
             bw.RunWorkerAsync();
@@ -1119,26 +1311,32 @@ namespace Dependencies
         /// </summary>
         private void ResolveDummyEntries(object sender, RoutedEventArgs e)
         {
-            ModuleTreeViewItem NeedDummyPeNode = e.OriginalSource as ModuleTreeViewItem;
+            ResolveDummyEntries(e.OriginalSource as ModuleTreeViewItem);
+        }
 
-            if (NeedDummyPeNode.Items.Count == 0)
+        private void ResolveDummyEntries(ModuleTreeViewItem moduleTreeViewItem, bool force = false)
+        {
+            if (moduleTreeViewItem == null) return;
+            ModuleTreeViewItem needDummyPeNode = moduleTreeViewItem;
+            if (!force && needDummyPeNode!.Items.Count == 0)
             {
                 return;
             }
 
-            ModuleTreeViewItem MaybeDummyNode = (ModuleTreeViewItem)NeedDummyPeNode.Items[0];
-            DependencyNodeContext Context = (DependencyNodeContext)MaybeDummyNode.DataContext;
+            ModuleTreeViewItem maybeDummyNode = (ModuleTreeViewItem)needDummyPeNode.Items[0];
+            DependencyNodeContext context = (DependencyNodeContext)maybeDummyNode.DataContext;
 
             //TODO: Improve resolution predicate
-            if (!Context.IsDummy)
+            if (!context.IsDummy)
             {
                 return;
             }
 
-            NeedDummyPeNode.Items.Clear();
-            string Filepath = NeedDummyPeNode.ModuleFilePath;
-
-            ConstructDependencyTree(NeedDummyPeNode, Filepath);
+            needDummyPeNode.Items.Clear();
+            string filepath = needDummyPeNode.ModuleFilePath;
+            TreeBuildingBehaviour.DependencyTreeBehaviour settingTreeBehaviour =
+                TreeBuildingBehaviour.GetGlobalBehaviour();
+            ConstructDependencyTree(needDummyPeNode, filepath, settingTreeBehaviour);
         }
 
         #endregion TreeConstruction
@@ -1147,14 +1345,14 @@ namespace Dependencies
 
         private void OnModuleViewSelectedItemChanged(object sender, RoutedEventArgs e)
         {
-            DisplayModuleInfo SelectedModule = (sender as DependencyModuleList).SelectedItem as DisplayModuleInfo;
+            DisplayModuleInfo selectedModule = (sender as DependencyModuleList).SelectedItem as DisplayModuleInfo;
 
             // Selected Pe has not been found on disk
-            if (SelectedModule == null)
+            if (selectedModule == null)
                 return;
 
             // Display module as root (since we can't know which parent it's attached to)
-            UpdateImportExportLists(SelectedModule, null);
+            UpdateImportExportLists(selectedModule, null);
         }
 
         private void OnTreeViewSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -1167,150 +1365,150 @@ namespace Dependencies
 
             DependencyNodeContext childTreeContext =
                 ((DependencyNodeContext)(DllTreeView.SelectedItem as ModuleTreeViewItem).DataContext);
-            DisplayModuleInfo SelectedModule = childTreeContext.ModuleInfo.Target as DisplayModuleInfo;
-            if (SelectedModule == null)
+            DisplayModuleInfo selectedModule = childTreeContext.ModuleInfo.Target as DisplayModuleInfo;
+            if (selectedModule == null)
             {
                 return;
             }
 
             // Selected Pe has not been found on disk : unvalidate current module
-            SelectedModule.HasErrors = !NativeFile.Exists(SelectedModule.Filepath);
-            if (SelectedModule.HasErrors)
+            selectedModule.HasErrors = !NativeFile.Exists(selectedModule.Filepath);
+            if (selectedModule.HasErrors)
             {
                 // TODO : do a proper refresh instead of asking the user to do it
                 MessageBox.Show(String.Format(
                     "We could not find {0:s} file on the disk anymore, please fix this problem and refresh the window via F5",
-                    SelectedModule.Filepath));
+                    selectedModule.Filepath));
             }
 
             // Root Item : no parent
-            ModuleTreeViewItem TreeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
-            ModuleTreeViewItem SelectedItem = DllTreeView.SelectedItem as ModuleTreeViewItem;
-            if (SelectedItem == TreeRootItem)
+            ModuleTreeViewItem treeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
+            ModuleTreeViewItem selectedItem = DllTreeView.SelectedItem as ModuleTreeViewItem;
+            if (selectedItem == treeRootItem)
             {
                 // Selected Pe has not been found on disk : unvalidate current module
-                if (SelectedModule.HasErrors)
+                if (selectedModule.HasErrors)
                 {
                     UpdateImportExportLists(null, null);
                 }
                 else
                 {
-                    SelectedModule.HasErrors = false;
-                    UpdateImportExportLists(SelectedModule, null);
+                    selectedModule.HasErrors = false;
+                    UpdateImportExportLists(selectedModule, null);
                 }
 
                 return;
             }
 
             // Tree Item
-            DisplayModuleInfo parentModule = SelectedItem.ParentModule.ModuleInfo;
-            UpdateImportExportLists(SelectedModule, parentModule);
+            DisplayModuleInfo parentModule = selectedItem.ParentModule.ModuleInfo;
+            UpdateImportExportLists(selectedModule, parentModule);
         }
 
-        private void UpdateImportExportLists(DisplayModuleInfo SelectedModule, DisplayModuleInfo Parent)
+        private void UpdateImportExportLists(DisplayModuleInfo selectedModule, DisplayModuleInfo parent)
         {
-            if (SelectedModule == null)
+            if (selectedModule == null)
             {
                 ImportList.Items.Clear();
                 ExportList.Items.Clear();
             }
             else
             {
-                if (Parent == null) // root module
+                if (parent == null) // root module
                 {
-                    ImportList.SetRootImports(SelectedModule.Imports, SymPrv, this);
+                    ImportList.SetRootImports(selectedModule.Imports, _symPrv, this);
                 }
                 else
                 {
                     // Imports from the same dll are not necessarly sequential (see: HDDGuru\RawCopy.exe)
-                    var machingImports = Parent.Imports.FindAll(imp => imp.Name == SelectedModule._Name);
-                    ImportList.SetImports(SelectedModule.Filepath, SelectedModule.Exports, machingImports, SymPrv,
+                    var machingImports = parent.Imports.FindAll(imp => imp.Name == selectedModule._Name);
+                    ImportList.SetImports(selectedModule.Filepath, selectedModule.Exports, machingImports, _symPrv,
                         this);
                 }
 
                 ImportList.ResetAutoSortProperty();
 
-                ExportList.SetExports(SelectedModule.Exports, SymPrv);
+                ExportList.SetExports(selectedModule.Exports, _symPrv);
                 ExportList.ResetAutoSortProperty();
             }
         }
 
-        public PE LoadImport(string ModuleName, DisplayModuleInfo CurrentModule = null, bool DelayLoad = false)
+        public PE LoadImport(string moduleName, DisplayModuleInfo currentModule = null, bool delayLoad = false)
         {
-            if (CurrentModule == null)
+            if (currentModule == null)
             {
-                CurrentModule = _SelectedModule;
+                currentModule = _selectedModule;
             }
 
-            Tuple<ModuleSearchStrategy, PE> ResolvedModule = BinaryCache.ResolveModule(
-                Pe,
-                ModuleName,
-                SxsEntriesCache,
+            Tuple<ModuleSearchStrategy, PE> resolvedModule = BinaryCache.ResolveModule(
+                _pe,
+                moduleName,
+                _sxsEntriesCache,
                 CustomSearchFolders,
                 WorkingDirectory
             );
 
-            string ModuleFilepath = (ResolvedModule.Item2 != null) ? ResolvedModule.Item2.Filepath : null;
+            string moduleFilepath = (resolvedModule.Item2 != null) ? resolvedModule.Item2.Filepath : null;
 
             // Not found module, returning PE without update module list
-            if (ModuleFilepath == null)
+            if (moduleFilepath == null)
             {
-                return ResolvedModule.Item2;
+                return resolvedModule.Item2;
             }
 
-            ModuleFlag ModuleFlags = ModuleFlag.NoFlag;
-            if (DelayLoad)
-                ModuleFlags |= ModuleFlag.DelayLoad;
-            if (ResolvedModule.Item1 == ModuleSearchStrategy.ApiSetSchema)
-                ModuleFlags |= ModuleFlag.ApiSet;
+            ModuleFlag moduleFlags = ModuleFlag.NoFlag;
+            if (delayLoad)
+                moduleFlags |= ModuleFlag.DelayLoad;
+            if (resolvedModule.Item1 == ModuleSearchStrategy.ApiSetSchema)
+                moduleFlags |= ModuleFlag.ApiSet;
 
-            ModuleCacheKey ModuleKey = new ModuleCacheKey(ModuleName, ModuleFilepath, ModuleFlags);
-            if (!ProcessedModulesCache.ContainsKey(ModuleKey))
+            ModuleCacheKey moduleKey = new ModuleCacheKey(moduleName, moduleFilepath, moduleFlags);
+            if (!_processedModulesCache.ContainsKey(moduleKey))
             {
-                DisplayModuleInfo NewModule;
+                DisplayModuleInfo newModule;
 
                 // apiset resolution are a bit trickier
-                if (ResolvedModule.Item1 == ModuleSearchStrategy.ApiSetSchema)
+                if (resolvedModule.Item1 == ModuleSearchStrategy.ApiSetSchema)
                 {
-                    var ApiSetContractModule = new DisplayModuleInfo(
-                        BinaryCache.LookupApiSetLibrary(ModuleName),
-                        ResolvedModule.Item2,
-                        ResolvedModule.Item1,
-                        ModuleFlags
+                    var apiSetContractModule = new DisplayModuleInfo(
+                        BinaryCache.LookupApiSetLibrary(moduleName),
+                        resolvedModule.Item2,
+                        resolvedModule.Item1,
+                        moduleFlags
                     );
-                    NewModule = new ApiSetModuleInfo(ModuleName, ref ApiSetContractModule);
+                    newModule = new ApiSetModuleInfo(moduleName, ref apiSetContractModule);
                 }
                 else
                 {
-                    NewModule = new DisplayModuleInfo(
-                        ModuleName,
-                        ResolvedModule.Item2,
-                        ResolvedModule.Item1,
-                        ModuleFlags
+                    newModule = new DisplayModuleInfo(
+                        moduleName,
+                        resolvedModule.Item2,
+                        resolvedModule.Item1,
+                        moduleFlags
                     );
                 }
 
-                ProcessedModulesCache[ModuleKey] = NewModule;
+                _processedModulesCache[moduleKey] = newModule;
 
                 // add it to the module list
-                ModulesList.AddModule(ProcessedModulesCache[ModuleKey]);
+                ModulesList.AddModule(_processedModulesCache[moduleKey]);
             }
 
-            return ResolvedModule.Item2;
+            return resolvedModule.Item2;
         }
 
 
         /// <summary>
         /// Reentrant version of Collapse/Expand Node
         /// </summary>
-        /// <param name="Item"></param>
-        /// <param name="ExpandNode"></param>
-        private void CollapseOrExpandAllNodes(ModuleTreeViewItem Item, bool ExpandNode)
+        /// <param name="item"></param>
+        /// <param name="expandNode"></param>
+        private void CollapseOrExpandAllNodes(ModuleTreeViewItem item, bool expandNode)
         {
-            Item.IsExpanded = ExpandNode;
-            foreach (ModuleTreeViewItem ChildItem in Item.Items)
+            item.IsExpanded = expandNode;
+            foreach (ModuleTreeViewItem childItem in item.Items)
             {
-                CollapseOrExpandAllNodes(ChildItem, ExpandNode);
+                CollapseOrExpandAllNodes(childItem, expandNode);
             }
         }
 
@@ -1319,27 +1517,27 @@ namespace Dependencies
             // Expanding all nodes tends to slow down the application (massive allocations for node DataContext)
             // TODO : Reduce memory pressure by storing tree nodes data context in a HashSet and find an async trick
             // to improve the command responsiveness.
-            TreeView TreeNode = sender as TreeView;
-            if (TreeNode == null) return;
-            CollapseOrExpandAllNodes((TreeNode.Items[0] as ModuleTreeViewItem), true);
+            TreeView treeNode = sender as TreeView;
+            if (treeNode == null) return;
+            CollapseOrExpandAllNodes((treeNode.Items[0] as ModuleTreeViewItem), true);
         }
 
         private void CollapseAllNodes_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            TreeView TreeNode = sender as TreeView;
-            if (TreeNode == null) return;
-            CollapseOrExpandAllNodes((TreeNode.Items[0] as ModuleTreeViewItem), false);
+            TreeView treeNode = sender as TreeView;
+            if (treeNode == null) return;
+            CollapseOrExpandAllNodes((treeNode.Items[0] as ModuleTreeViewItem), false);
         }
 
         private void DoFindModuleInList_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            if (Source == null) return;
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
+            ModuleTreeViewItem source = e.Source as ModuleTreeViewItem;
+            if (source == null) return;
+            String selectedModuleName = source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
 
             foreach (DisplayModuleInfo item in ModulesList.Items)
             {
-                if (item.ModuleName == SelectedModuleName)
+                if (item.ModuleName == selectedModuleName)
                 {
                     ModulesList.SelectedItem = item;
                     ModulesList.ScrollIntoView(item);
@@ -1350,11 +1548,97 @@ namespace Dependencies
 
         private void CopyFilePath_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            if (Source == null)
+            ModuleTreeViewItem source = e.Source as ModuleTreeViewItem;
+            if (source == null)
                 return;
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
-            Clipboard.SetText(SelectedModuleName);
+            String selectedModuleName = source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
+            Clipboard.SetText(selectedModuleName);
+        }
+
+        private void CopyAllFileRecursionNoSystem_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            CopyAllFileRecursion(sender, e, new List<string>()
+            {
+                @"C:\Windows\"
+            });
+        }
+
+        private void CopyAllFileRecursion_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            CopyAllFileRecursion(sender, e, new List<string>());
+        }
+
+        private void CopyAllFileRecursion(object sender, ExecutedRoutedEventArgs e,
+            List<string> excludeDirectory)
+        {
+            ModuleTreeViewItem moduleTreeView = e.Source as ModuleTreeViewItem;
+            if (moduleTreeView == null)
+            {
+                TreeView treeNode = sender as TreeView;
+                if (treeNode == null || treeNode.Items.Count <= 0) return;
+                moduleTreeView = treeNode.Items[0] as ModuleTreeViewItem;
+            }
+
+            if (moduleTreeView == null || moduleTreeView.ModuleInfo == null ||
+                moduleTreeView.ModuleInfo.Imports == null) return;
+
+            UpdateStatusBarMessage($"Prepare for Copyed Files,Please waiting a moment ...");
+
+            Dictionary<string, ImportContext> newTreeContexts = new();
+            SxsEntries sxsEntries = new();
+            Dictionary<string, DisplayModuleInfo> modulesCache = new();
+            List<DisplayModuleInfo> moduleList = new();
+
+            var sc = new StringCollection();
+            sc.Add(moduleTreeView.ModuleFilePath);
+
+            foreach (ModuleTreeViewItem treeItem in moduleTreeView.Items.Cast<ModuleTreeViewItem>())
+            {
+                var dir = Path.GetDirectoryName(treeItem.ModuleFilePath)!;
+                if (!excludeDirectory.Any(d => dir.StartsWith(d, StringComparison.OrdinalIgnoreCase)))
+                {
+                    sc.Add(treeItem.ModuleFilePath);
+                }
+
+                PE newPe = LoadPe(treeItem.ModuleFilePath);
+                //ProcessPe(RootFolder, _pe, newTreeContexts, newPe, sxsEntries, CustomSearchFolders, WorkingDirectory);
+                ConstructDependencyTreeV2(
+                    RootFolder,
+                    _pe,
+                    newPe,
+                    newTreeContexts,
+                    sxsEntries,
+                    CustomSearchFolders,
+                    WorkingDirectory,
+                    modulesCache,
+                    moduleList,
+                    TreeBuildingBehaviour.DependencyTreeBehaviour.RecursiveOnlyOnDirectImports,
+                    -8);
+            }
+
+            foreach (var newTreeContext in newTreeContexts)
+            {
+                if (newTreeContext.Value.ModuleLocation == ModuleSearchStrategy.NOT_FOUND) continue;
+                var dir = Path.GetDirectoryName(newTreeContext.Value.PeFilePath)!;
+                if (excludeDirectory.Any(d => dir.StartsWith(d, StringComparison.OrdinalIgnoreCase))) continue;
+                sc.Add(newTreeContext.Value.PeFilePath);
+            }
+
+            UpdateStatusBarMessage($"Copyed {sc.Count} Files to Clipboard");
+            Clipboard.SetFileDropList(sc);
+        }
+
+        private void GetRecursionModules(
+            ModuleTreeViewItem root,
+            List<ModuleTreeViewItem> outputs,
+            Dictionary<string, ImportContext> newTreeContexts)
+        {
+            if (root == null || root.Items.Count <= 0) return;
+            foreach (var item in root.Items.Cast<ModuleTreeViewItem>())
+            {
+                outputs.Add(item);
+                GetRecursionModules(item, outputs, newTreeContexts);
+            }
         }
 
         private void CopyAllFile_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -1381,79 +1665,79 @@ namespace Dependencies
 
         private void CopyFile_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            if (Source == null) return;
-            if (!File.Exists(Source.ModuleFilePath)) return;
+            ModuleTreeViewItem source = e.Source as ModuleTreeViewItem;
+            if (source == null) return;
+            if (!File.Exists(source.ModuleFilePath)) return;
             Clipboard.SetFileDropList(new StringCollection()
             {
-                Source.ModuleFilePath
+                source.ModuleFilePath
             });
-            UpdateStatusBarMessage($"{Source.ModuleFilePath} Copyed to Clipboard");
+            UpdateStatusBarMessage($"{source.ModuleFilePath} Copyed to Clipboard");
         }
 
         private void OpenInExplorer_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            ModuleTreeViewItem Source = e.Source as ModuleTreeViewItem;
-            if (Source == null)
+            ModuleTreeViewItem source = e.Source as ModuleTreeViewItem;
+            if (source == null)
                 return;
 
-            String SelectedModuleName = Source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
-            String commandParameter = "/select,\"" + SelectedModuleName + "\"";
+            String selectedModuleName = source.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath);
+            String commandParameter = "/select,\"" + selectedModuleName + "\"";
 
             Process.Start("explorer.exe", commandParameter);
         }
 
-        private void ExpandAllParentNode(ModuleTreeViewItem Item)
+        private void ExpandAllParentNode(ModuleTreeViewItem item)
         {
-            if (Item != null)
+            if (item != null)
             {
-                ExpandAllParentNode(Item.Parent as ModuleTreeViewItem);
-                Item.IsExpanded = true;
+                ExpandAllParentNode(item.Parent as ModuleTreeViewItem);
+                item.IsExpanded = true;
             }
         }
 
         /// <summary>
         /// Reentrant version of Collapse/Expand Node
         /// </summary>
-        /// <param name="Item"></param>
+        /// <param name="item"></param>
         /// <param name="ExpandNode"></param>
-        private ModuleTreeViewItem FindModuleInTree(ModuleTreeViewItem Item, DisplayModuleInfo Module,
-            bool Highlight = false)
+        private ModuleTreeViewItem FindModuleInTree(ModuleTreeViewItem item, DisplayModuleInfo module,
+            bool highlight = false)
         {
-            if (Item.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) == Module.ModuleName)
+            if (item.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) == module.ModuleName)
             {
-                if (Highlight)
+                if (highlight)
                 {
-                    ExpandAllParentNode(Item.Parent as ModuleTreeViewItem);
-                    Item.IsSelected = true;
-                    Item.BringIntoView();
-                    Item.Focus();
+                    ExpandAllParentNode(item.Parent as ModuleTreeViewItem);
+                    item.IsSelected = true;
+                    item.BringIntoView();
+                    item.Focus();
                 }
 
-                return Item;
+                return item;
             }
 
             // BFS style search -> return the first matching node with the lowest "depth"
-            foreach (ModuleTreeViewItem ChildItem in Item.Items)
+            foreach (ModuleTreeViewItem childItem in item.Items)
             {
-                if (ChildItem.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) ==
-                    Module.ModuleName)
+                if (childItem.GetTreeNodeHeaderName(Properties.Settings.Default.FullPath) ==
+                    module.ModuleName)
                 {
-                    if (Highlight)
+                    if (highlight)
                     {
-                        ExpandAllParentNode(Item);
-                        ChildItem.IsSelected = true;
-                        ChildItem.BringIntoView();
-                        ChildItem.Focus();
+                        ExpandAllParentNode(item);
+                        childItem.IsSelected = true;
+                        childItem.BringIntoView();
+                        childItem.Focus();
                     }
 
-                    return Item;
+                    return item;
                 }
             }
 
-            foreach (ModuleTreeViewItem ChildItem in Item.Items)
+            foreach (ModuleTreeViewItem childItem in item.Items)
             {
-                ModuleTreeViewItem matchingItem = FindModuleInTree(ChildItem, Module, Highlight);
+                ModuleTreeViewItem matchingItem = FindModuleInTree(childItem, module, highlight);
 
                 // early exit as soon as we find a matching node
                 if (matchingItem != null)
@@ -1470,10 +1754,10 @@ namespace Dependencies
             {
                 return new RelayCommand((param) =>
                 {
-                    DisplayModuleInfo SelectedModule = (param as DisplayModuleInfo);
-                    ModuleTreeViewItem TreeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
+                    DisplayModuleInfo selectedModule = (param as DisplayModuleInfo);
+                    ModuleTreeViewItem treeRootItem = DllTreeView.Items[0] as ModuleTreeViewItem;
 
-                    FindModuleInTree(TreeRootItem, SelectedModule, true);
+                    FindModuleInTree(treeRootItem, selectedModule, true);
                 });
             }
         }
@@ -1484,7 +1768,7 @@ namespace Dependencies
             {
                 return new RelayCommand((param) =>
                 {
-                    ModuleSearchOrder modalWindow = new ModuleSearchOrder(ProcessedModulesCache);
+                    ModuleSearchOrder modalWindow = new ModuleSearchOrder(_processedModulesCache);
                     modalWindow.ShowDialog();
                 });
             }

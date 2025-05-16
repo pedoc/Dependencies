@@ -52,6 +52,8 @@
 					<RoutedUICommand x:Key="CopyFilePath" Text="Copy File Path" />
 					<RoutedUICommand x:Key="CopyFile" Text="Copy File" />
 					<RoutedUICommand x:Key="CopyAllFile" Text="Copy All File" />
+					<RoutedUICommand x:Key="CopyAllFileRecursion" Text="Copy All File(Recursion)" />
+					<RoutedUICommand x:Key="CopyAllFileRecursionNoSystem" Text="Copy All File(Recursion Without System)" />
 					<RoutedUICommand x:Key="OpenInExplorer" Text="Open in File Explorer" />
 
 					<ContextMenu x:Key="TreeItemContextMenu">
@@ -77,6 +79,14 @@
 						          IsEnabled="True" />
 						<MenuItem Header="Copy All File"
 						          Command="{StaticResource CopyAllFile}"
+						          Background="WhiteSmoke"
+						          IsEnabled="True" />
+						<MenuItem Header="Copy All File(Recursion)"
+						          Command="{StaticResource CopyAllFileRecursion}"
+						          Background="WhiteSmoke"
+						          IsEnabled="True" />			
+						<MenuItem Header="Copy All File(Recursion Without System)"
+						          Command="{StaticResource CopyAllFileRecursionNoSystem}"
 						          Background="WhiteSmoke"
 						          IsEnabled="True" />
 						<Separator Height="3" Margin="-1,0,0,0" />
@@ -193,6 +203,8 @@
 					<CommandBinding Command="{StaticResource CopyFilePath}" Executed="CopyFilePath_Executed" />
 					<CommandBinding Command="{StaticResource CopyFile}" Executed="CopyFile_Executed" />
 					<CommandBinding Command="{StaticResource CopyAllFile}" Executed="CopyAllFile_Executed" />
+					<CommandBinding Command="{StaticResource CopyAllFileRecursion}" Executed="CopyAllFileRecursion_Executed" />
+					<CommandBinding Command="{StaticResource CopyAllFileRecursionNoSystem}" Executed="CopyAllFileRecursionNoSystem_Executed" />
 					<CommandBinding Command="{StaticResource OpenInExplorer}" Executed="OpenInExplorer_Executed" />
 				</TreeView.CommandBindings>
 			</TreeView>

@@ -260,46 +260,46 @@ namespace Dependencies
     {
         #region Constructors
 
-        public DisplayModuleInfo(string ModuleName)
+        public DisplayModuleInfo(string moduleName)
         {
-            _Name = ModuleName;
+            _Name = moduleName;
             _Filepath = null;
             _Flags = 0;
 
             AddNewEventHandler("FullPath", "FullPath", "ModuleName", this.GetPathDisplayName);
         }
 
-        public DisplayModuleInfo(string ModuleName, PE Pe, ModuleSearchStrategy Location, ModuleFlag Flags = 0)
+        public DisplayModuleInfo(string moduleName, PE pe, ModuleSearchStrategy location, ModuleFlag flags = 0)
         {
-            _Name = ModuleName;
-            _Filepath = Pe.Filepath;
-            _Flags = Flags;
+            _Name = moduleName;
+            _Filepath = pe.Filepath;
+            _Flags = flags;
 
 
             // Do not set this variables in order to 
             // lessen memory allocations
             _Imports = null;
             _Exports = null;
-            _Location = Location;
+            _Location = location;
 
             _Info = new ModuleInfo()
             {
-                Machine = Pe.Properties.Machine,
-                Magic = Pe.Properties.Magic,
-                Filesize = Pe.Properties.FileSize,
+                Machine = pe.Properties.Machine,
+                Magic = pe.Properties.Magic,
+                Filesize = pe.Properties.FileSize,
 
-                ImageBase = (UInt64)Pe.Properties.ImageBase,
-                SizeOfImage = Pe.Properties.SizeOfImage,
-                EntryPoint = (UInt64)Pe.Properties.EntryPoint,
+                ImageBase = (UInt64)pe.Properties.ImageBase,
+                SizeOfImage = pe.Properties.SizeOfImage,
+                EntryPoint = (UInt64)pe.Properties.EntryPoint,
 
-                Checksum = Pe.Properties.Checksum,
-                CorrectChecksum = Pe.Properties.CorrectChecksum,
+                Checksum = pe.Properties.Checksum,
+                CorrectChecksum = pe.Properties.CorrectChecksum,
 
-                Subsystem = Pe.Properties.Subsystem,
-                SubsystemVersion = Pe.Properties.SubsystemVersion,
+                Subsystem = pe.Properties.Subsystem,
+                SubsystemVersion = pe.Properties.SubsystemVersion,
 
-                Characteristics = Pe.Properties.Characteristics,
-                DllCharacteristics = Pe.Properties.DllCharacteristics,
+                Characteristics = pe.Properties.Characteristics,
+                DllCharacteristics = pe.Properties.DllCharacteristics,
             };
 
             AddNewEventHandler("FullPath", "FullPath", "ModuleName", this.GetPathDisplayName);
